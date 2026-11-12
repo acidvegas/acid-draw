@@ -2,7 +2,9 @@
 # acid-draw - Developed by acidvegas in Python (https://github.com/acidvegas)
 # tests/test_app.py
 
+import json
 import os
+import re
 import sys
 import tempfile
 import time
@@ -146,6 +148,20 @@ class TestApp(unittest.TestCase):
 		self.assertTrue(any(m['kind'] == 'good' and m['name'] for m in room.messages))
 		self.assertEqual(room.state, 'reveal')
 		self.assertGreater(room.players[guesser]['score'], live.GUESS_BASE)
+
+	def test_seo(self):
+		'''Canonical, og:url, JSON-LD, robots.txt and the sitemap use DRAW_PUBLIC_URL when set and the request host when not.'''
+
+		for public, root in (('', 'http://draw.example.org/'), ('https://draw.acid.vegas', 'https://draw.acid.vegas/')):
+			with unittest.mock.patch.object(draw_app, 'PUBLIC_URL', public):
+				page = self.client.get('/', base_url='http://draw.example.org').get_data(as_text=True)
+				self.assertIn(f'<link rel="canonical" href="{root}">', page)
+				self.assertIn(f'<meta property="og:url" content="{root}">', page)
+				self.assertIn(f'<meta property="og:image" content="{root}static/og.png">', page)
+				ld = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', page).group(1))
+				self.assertEqual((ld['url'], ld['image'], ld['@type']), (root, root + 'static/og.png', ['VideoGame', 'WebApplication']))
+				self.assertIn(f'Sitemap: {root}sitemap.xml', self.client.get('/robots.txt', base_url='http://draw.example.org').get_data(as_text=True))
+				self.assertIn(f'<loc>{root}</loc>', self.client.get('/sitemap.xml', base_url='http://draw.example.org').get_data(as_text=True))
 
 	def test_standalone_no_feed(self):
 		'''Without acid-arcade-db a streak or live win sends nothing to the feed.'''

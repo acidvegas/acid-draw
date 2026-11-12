@@ -28,6 +28,7 @@ app = Flask(__name__)
 CACHE_VERSION = int(time.time())
 PROXIES       = int(os.environ.get('DRAW_PROXIES', '0')) # reverse proxies in front of the app, so the real client IP is used
 ADMINS        = {n.strip().lower() for n in os.environ.get('DRAW_ADMINS', '').split(',') if n.strip()}
+PUBLIC_URL    = os.environ.get('DRAW_PUBLIC_URL', '').rstrip('/') # main address for crawlers and share cards, e.g. https://draw.acid.vegas
 PING_EVERY    = 15   # seconds between keep-alive comments on an idle event stream
 DB_EVERY      = 15   # seconds between refreshing database backed parts of an idle event stream
 
@@ -127,6 +128,12 @@ def payload() -> dict:
 	return request.get_json(silent=True) or {}
 
 
+def public_root() -> str:
+	'''Return the site root for canonical and share URLs: DRAW_PUBLIC_URL when set, otherwise the address the request came in on.'''
+
+	return PUBLIC_URL + '/' if PUBLIC_URL else request.url_root
+
+
 def room_action(fn):
 	'''Find the live room and the player's seat named in the request, run the action under the lock and wake the room.'''
 
@@ -170,7 +177,24 @@ def setup():
 def index():
 	'''Serve the page.'''
 
-	return render_template('index.html', cache_v=CACHE_VERSION, url=request.url_root)
+	url = public_root()
+	ld  = {
+		'@context'            : 'https://schema.org',
+		'@type'               : ['VideoGame', 'WebApplication'],
+		'name'                : 'acid draw',
+		'url'                 : url,
+		'description'         : 'Draw a word, your friend guesses it. Turn based 1v1 games with streaks and coins, plus live rooms where everyone races to guess. Free and open source.',
+		'image'               : url + 'static/og.png',
+		'applicationCategory' : 'GameApplication',
+		'operatingSystem'     : 'Any',
+		'genre'               : ['Drawing', 'Party', 'Word'],
+		'gamePlatform'        : 'Web browser',
+		'playMode'            : ['MultiPlayer'],
+		'isAccessibleForFree' : True,
+		'offers'              : {'@type': 'Offer', 'price': '0', 'priceCurrency': 'USD'},
+		'author'              : {'@type': 'Person', 'name': 'acidvegas', 'url': 'https://github.com/acidvegas'}
+	}
+	return render_template('index.html', cache_v=CACHE_VERSION, url=url, ld=json.dumps(ld).replace('</', '<\\/'))
 
 
 @app.route('/admin/words')
@@ -617,6 +641,13 @@ def live_join():
 	return jsonify({'code': room.code, 'pid': pid})
 
 
+@app.route('/robots.txt')
+def robots():
+	'''Let crawlers in and point them at the sitemap.'''
+
+	return Response(f'User-agent: *\nAllow: /\nSitemap: {public_root()}sitemap.xml\n', mimetype='text/plain')
+
+
 @app.route('/shop/buy', methods=['POST'])
 @login_required
 def shop_buy(user_id: int, username: str):
@@ -646,6 +677,13 @@ def service_worker():
 	'''Serve the service worker from the root so it covers the whole site. Android only shows notifications through one.'''
 
 	return send_from_directory(app.static_folder, 'sw.js', mimetype='text/javascript', max_age=0)
+
+
+@app.route('/sitemap.xml')
+def sitemap():
+	'''List the one indexable page. Games and rooms live behind the # in the URL.'''
+
+	return Response(f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>{public_root()}</loc></url></urlset>\n', mimetype='application/xml')
 
 
 @app.route('/words/mine')

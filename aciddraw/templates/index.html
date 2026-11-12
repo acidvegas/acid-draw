@@ -10,6 +10,8 @@
 	<meta name="mobile-web-app-capable" content="yes">
 	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 	<meta name="theme-color" content="#17121f">
+	<meta name="color-scheme" content="dark">
+	<meta name="application-name" content="acid draw">
 	<title>acid draw - draw it, guess it</title>
 	<meta name="description" content="Draw a word, your friend guesses it. Turn based 1v1 games with streaks and coins, plus live rooms where everyone races to guess. Free and open source.">
 	<link rel="canonical" href="{{ url }}">
@@ -18,7 +20,17 @@
 	<meta property="og:title" content="acid draw">
 	<meta property="og:description" content="Draw it, guess it. Turn based 1v1 and live rooms.">
 	<meta property="og:url" content="{{ url }}">
-	<meta name="twitter:card" content="summary">
+	<meta property="og:image" content="{{ url }}static/og.png">
+	<meta property="og:image:width" content="1200">
+	<meta property="og:image:height" content="630">
+	<meta property="og:image:alt" content="acid draw: draw it, guess it">
+	<meta property="og:locale" content="en_US">
+	<meta name="twitter:card" content="summary_large_image">
+	<meta name="twitter:title" content="acid draw">
+	<meta name="twitter:description" content="Draw it, guess it. Turn based 1v1 and live rooms.">
+	<meta name="twitter:image" content="{{ url }}static/og.png">
+	<meta name="twitter:image:alt" content="acid draw: draw it, guess it">
+	<script type="application/ld+json">{{ ld|safe }}</script>
 	<link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}?v={{ cache_v }}">
 	<link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}?v={{ cache_v }}">
 	<link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}?v={{ cache_v }}">

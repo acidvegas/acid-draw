@@ -8,6 +8,12 @@
 	"display"          : "standalone",
 	"background_color" : "#17121f",
 	"theme_color"      : "#17121f",
+	"lang"             : "en",
+	"categories"       : ["games"],
+	"shortcuts"        : [
+		{ "name": "Live rooms",   "url": "/#/live",  "description": "Join or open a live room"         },
+		{ "name": "Leaderboards", "url": "/#/ranks", "description": "Top coins, streaks and live wins" }
+	],
 	"icons"            : [
 		{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"      },
 		{ "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"      },

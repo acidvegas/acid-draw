@@ -60,11 +60,12 @@ DRAW_BIND=127.0.0.1 DRAW_ADMINS=acidvegas ./setup.sh
 
 This builds the `aciddraw` image and starts a container on port 20010 with the `aciddraw_data` volume mounted at `/data`.
 
-| Variable       | Default     | What it does                                                              |
-|----------------|-------------|---------------------------------------------------------------------------|
-| `DRAW_BIND`    | `127.0.0.1` | Address the port is published on                                          |
-| `DRAW_PROXIES` | `0`         | Number of reverse proxies in front of the app. Set it to `1` behind nginx |
-| `DRAW_ADMINS`  |             | Comma separated usernames that can manage the word list                   |
+| Variable          | Default     | What it does                                                                                                                             |
+|-------------------|-------------|------------------------------------------------------------------------------------------------------------------------------------------|
+| `DRAW_BIND`       | `127.0.0.1` | Address the port is published on                                                                                                         |
+| `DRAW_PROXIES`    | `0`         | Number of reverse proxies in front of the app. Set it to `1` behind nginx                                                                |
+| `DRAW_ADMINS`     |             | Comma separated usernames that can manage the word list                                                                                  |
+| `DRAW_PUBLIC_URL` |             | Main address for canonical links, share cards and the sitemap *(e.g. `https://draw.acid.vegas`)*. Unset uses the address of each request |
 
 For development:
 
