@@ -28,6 +28,7 @@ let adminPage = 0;
 let gamesFor  = null;   // token the games list was last loaded for, so the first load does not ring
 let ssoTried  = false;  // the shared arcade sign-in is tried once at page load...
 let ssoRetry  = false;  // ...and once more when a token stops working, never in a loop
+let challenge = null;   // ?challenge=<username> from an arcade profile, started once signed in
 
 // The async game on screen
 const G = { data: null, id: null, ui: null, chat: [], unread: 0, chatOpen: false };
@@ -639,6 +640,7 @@ function openAuth(mode) {
 			await loadMe();
 			connect(true);
 			onRoute();
+			startChallenge();
 		} catch (err) {
 			if (signup) newCaptcha();
 		}
@@ -832,6 +834,14 @@ function pic(uid, size) {
 function avatar(name, uid, size) {
 	// The arcade picture when there is one, otherwise the colored first letter
 	return pic(uid, size) || `<span class="avatar${size ? ' ' + size : ''}" style="--h:${hue(name)}">${esc(name[0].toUpperCase())}</span>`;
+}
+
+function startChallenge() {
+	// Start the 1v1 game an arcade challenge link asked for, once
+	if (!challenge || !me) return;
+	const opponent = challenge;
+	challenge = null;
+	newGame({ mode: 'user', opponent }).catch(() => {});
 }
 
 async function newGame(body) {
@@ -1554,6 +1564,14 @@ async function boot() {
 	wire();
 	await loadMe();
 	onRoute();
+	const params = new URLSearchParams(location.search);
+	if (cfg.arcade_public_url && params.get('challenge')) {
+		challenge = params.get('challenge').trim();
+		params.delete('challenge');
+		history.replaceState(null, '', location.pathname + (params.toString() ? '?' + params : '') + location.hash);
+		if (me) startChallenge();
+		else openAuth('login');
+	}
 }
 
 boot();

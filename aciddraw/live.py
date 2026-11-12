@@ -11,7 +11,7 @@ import time
 
 import canvas
 import words
-from storage import DB_LOCK, add_coins, arcade_push, db_connect, packs_of, stat
+from storage import DB_LOCK, add_coins, arcade_event, arcade_push, db_connect, packs_of, stat
 
 
 CHOOSE_TIME  = 15             # seconds the drawer gets to pick a word
@@ -30,6 +30,7 @@ RATE_MAX     = 5              # messages per span
 GUESS_BASE   = 100            # points for any correct guess...
 GUESS_SPEED  = 400            # ...plus up to this much more the faster it comes
 DRAWER_EACH  = 50             # points the drawer gets for every player who guesses
+FEED_PLAYERS = 3              # players a live game needs before its winner goes on the arcade activity feed
 
 
 class Room:
@@ -143,6 +144,8 @@ class Room:
 				if p['user_id']:
 					stat(c, p['user_id'], live_games=1, live_wins=1 if top > 0 and p['score'] == top and len(ranked) > 1 else 0)
 					arcade_push(c, p['user_id'])
+					if top > 0 and p['score'] == top and len(ranked) >= FEED_PLAYERS:
+						arcade_event(p['user_id'], 'win', f'won a live room with {top} points')
 
 	def gone(self) -> bool:
 		'''Return True once the room has been empty long enough to close.'''

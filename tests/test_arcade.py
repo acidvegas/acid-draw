@@ -28,7 +28,9 @@ SESSIONS = {
 	'tok-zed'  : {'user_id': 9001, 'username': 'zed',   'admin': False},
 	'tok-yan'  : {'user_id': 9002, 'username': 'yan',   'admin': False},
 	'tok-boss' : {'user_id': 9003, 'username': 'boss',  'admin': True},
-	'tok-admin': {'user_id': 9004, 'username': 'admin', 'admin': False}
+	'tok-admin': {'user_id': 9004, 'username': 'admin', 'admin': False},
+	'tok-ava'  : {'user_id': 9005, 'username': 'ava',   'admin': False},
+	'tok-ben'  : {'user_id': 9006, 'username': 'ben',   'admin': False}
 }
 ACCOUNTS = {s['username']: s['user_id'] for s in SESSIONS.values()} | {'quinn': 9020} # quinn has never visited acid-draw
 
@@ -144,6 +146,18 @@ class TestArcade(unittest.TestCase):
 		st, res = self.call('tok-zed', '/games/new', {'mode': 'user', 'opponent': 'nobody_here'})
 		self.assertEqual((st, res['error']), (400, 'no player by that name'))
 
+	def test_presence(self):
+		'''Presence reports the signed in players with an event stream open, and an empty list when there are none.'''
+
+		clock = unittest.mock.Mock(wraps=time)
+		clock.sleep.side_effect = StopPoll
+		subs  = {'q1': {'user': 9006, 'room': None, 'game': None}, 'q2': {'user': None, 'room': 'ABCD', 'game': None}, 'q3': {'user': 9005, 'room': None, 'game': 3}, 'q4': {'user': 9005, 'room': None, 'game': None}}
+		for current, expect in ((subs, [9005, 9006]), ({}, [])):
+			with unittest.mock.patch.dict(draw_app.hub.SUBS, current, clear=True), unittest.mock.patch.object(auth, 'time', clock), unittest.mock.patch.object(arcade, 'presence') as presence:
+				with self.assertRaises(StopPoll):
+					auth.arcade_presence()
+			presence.assert_called_once_with(expect)
+
 	def test_sso(self):
 		'''Sign ins set the shared cookie, /auth/sso swaps it for a session, logout clears it, and /auth/me starts sharing an older sign in.'''
 
@@ -216,6 +230,43 @@ class TestArcade(unittest.TestCase):
 			self.assertIsNone(c.execute('SELECT 1 FROM rounds WHERE game_id=?', (gid,)).fetchone())
 			self.assertIsNone(c.execute('SELECT 1 FROM game_chat WHERE game_id=?', (gid,)).fetchone())
 			self.assertIsNone(c.execute('SELECT 1 FROM plays WHERE user_id=9002').fetchone())
+
+	def test_feed_live_win(self):
+		'''Winning a live game with 3 or more players goes on the feed once, guests and smaller games never.'''
+
+		room = draw_app.live.Room('FEED', 'feed room', False, 1, 80, 8)
+		for uid, name, score in ((9005, 'ava', 900), (9006, 'ben', 400), (None, 'guestie', 100)):
+			pid, _ = room.join(uid, name)
+			room.players[pid]['score'] = score
+		with unittest.mock.patch.object(storage.threading, 'Thread', SyncThread), unittest.mock.patch.object(arcade, 'push_stats'), unittest.mock.patch.object(arcade, 'event') as event:
+			room.finish()
+			event.assert_called_once_with(9005, 'win', 'won a live room with 900 points')
+			event.reset_mock()
+			room.remove(next(k for k, p in room.players.items() if p['name'] == 'ben'))
+			room.finish()
+			event.assert_not_called()
+			room.join(9006, 'ben')
+			for p in room.players.values():
+				p['score'] = 700 if p['user_id'] is None else 0
+			room.finish()
+			event.assert_not_called()
+
+	def test_feed_streak(self):
+		'''A 1v1 streak goes on the feed for both players when it reaches 5, and not before.'''
+
+		self.call('tok-ben', '/auth/me')
+		_, g    = self.call('tok-ava', '/games/new', {'mode': 'user', 'opponent': 'ben'})
+		players = ['tok-ava', 'tok-ben']
+		with unittest.mock.patch.object(storage.threading, 'Thread', SyncThread), unittest.mock.patch.object(arcade, 'push_stats'), unittest.mock.patch.object(arcade, 'event') as event:
+			for n in range(1, 6):
+				drawer, guesser = players[(n - 1) % 2], players[n % 2]
+				_, view = self.call(drawer, f'/games/{g["id"]}')
+				self.call(drawer, f'/games/{g["id"]}/draw', {'choice': 0, 'ops': STROKE})
+				_, res  = self.call(guesser, f'/games/{g["id"]}/guess', {'guess': view['choices'][0]['word']})
+				self.assertEqual(res['streak'], n)
+				if n < 5:
+					event.assert_not_called()
+		self.assertEqual(sorted(c.args for c in event.call_args_list), [(9005, 'streak', 'is on a 5 guess streak'), (9006, 'streak', 'is on a 5 guess streak')])
 
 	def test_live_room(self):
 		'''Live room seats carry the user id for pictures, and a correct guess pushes stats.'''

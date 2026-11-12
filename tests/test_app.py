@@ -7,15 +7,18 @@ import sys
 import tempfile
 import time
 import unittest
+import unittest.mock
 
 os.environ['DRAW_DATA_DIR'] = tempfile.mkdtemp()
 os.environ['DRAW_ADMINS']   = 'admin'
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'aciddraw'))
 
 import app as draw_app
+import arcade
 import auth
 import hub
 import live
+import storage
 import words
 
 
@@ -143,6 +146,19 @@ class TestApp(unittest.TestCase):
 		self.assertTrue(any(m['kind'] == 'good' and m['name'] for m in room.messages))
 		self.assertEqual(room.state, 'reveal')
 		self.assertGreater(room.players[guesser]['score'], live.GUESS_BASE)
+
+	def test_standalone_no_feed(self):
+		'''Without acid-arcade-db a streak or live win sends nothing to the feed.'''
+
+		with unittest.mock.patch.object(arcade, 'event') as event, unittest.mock.patch.object(arcade, 'push_stats') as push:
+			storage.arcade_event(1, 'streak', 'is on a 5 guess streak')
+			room = live.Room('SOLO', 'solo room', False, 1, 80, 8)
+			for name in ('alice', 'bob', 'carol'):
+				pid, _ = room.join(1 if name == 'alice' else None, name)
+				room.players[pid]['score'] = 500 if name == 'alice' else 0
+			room.finish()
+		event.assert_not_called()
+		push.assert_not_called()
 
 	def test_standalone_no_sso(self):
 		'''Without acid-arcade-db no shared sign-in cookie is ever set and /auth/sso does not exist.'''

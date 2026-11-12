@@ -30,6 +30,21 @@ def add_coins(c: sqlite3.Connection, user_id: int, amount: int):
 		c.execute('UPDATE users SET coins = coins + ?, coins_earned = coins_earned + ? WHERE id=?', (amount, amount, user_id))
 
 
+def arcade_event(user_id: int, kind: str, text: str):
+	'''Add a line to the arcade activity feed off the request path. Guests and standalone mode send nothing.'''
+
+	if not user_id or not arcade.enabled():
+		return
+
+	def send():
+		try:
+			arcade.event(user_id, kind, text)
+		except Exception as e:
+			print(f'arcade event error for user {user_id}: {e!r}')
+
+	threading.Thread(target=send, daemon=True).start()
+
+
 def arcade_push(c: sqlite3.Connection, user_id: int):
 	'''Send a player's summary to acid-arcade-db off the request path. Read through the open connection so the change being made is included.'''
 

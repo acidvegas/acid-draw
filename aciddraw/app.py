@@ -19,7 +19,7 @@ import duel
 import hub
 import live
 import words
-from auth import ARCADE_ADMINS, USERNAME_RE, arcade_account, arcade_mirror, arcade_poll, captcha_create, captcha_verify, create_session, delete_session, request_token, request_user, token_user
+from auth import ARCADE_ADMINS, USERNAME_RE, arcade_account, arcade_mirror, arcade_poll, arcade_presence, captcha_create, captcha_verify, create_session, delete_session, request_token, request_user, token_user
 from storage import BOARDS, DB_LOCK, START_COINS, db_connect, init_db, leaderboard, packs_of, profile, prune_sessions, signup_allowed, spend
 
 
@@ -163,6 +163,7 @@ def setup():
 	hub.start(duel.expire)
 	if arcade.enabled():
 		threading.Thread(target=arcade_poll, daemon=True).start()
+		threading.Thread(target=arcade_presence, daemon=True).start()
 
 
 @app.route('/')

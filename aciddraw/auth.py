@@ -11,6 +11,7 @@ import time
 from flask import request
 
 import arcade
+import hub
 from storage import DB_LOCK, START_COINS, db_connect, delete_user
 
 
@@ -23,6 +24,7 @@ CAPTCHA_CHARS  = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' # no I/O/0/1
 CAPTCHA_COLORS = ['#ff7da0', '#ffae41', '#4dd17a', '#5fa8ff', '#b07dff', '#ffd86a', '#ff5e8a', '#7da0ff']
 ARCADE_ADMINS  = set() # user ids acid-arcade-db called admins on their last request
 ARCADE_EVERY   = 60    # seconds between polls of acid-arcade-db for renames and deletions
+PRESENCE_EVERY = 30    # seconds between telling acid-arcade-db who has the game open
 
 
 def arcade_account(username: str) -> int:
@@ -69,6 +71,19 @@ def arcade_poll():
 		except Exception as e:
 			print(f'arcade changes error: {e!r}')
 		time.sleep(ARCADE_EVERY)
+
+
+def arcade_presence():
+	'''Background thread: tell acid-arcade-db which signed in players have the game open, from their open event streams.'''
+
+	while True:
+		try:
+			with hub.LOCK:
+				users = sorted({info['user'] for info in hub.SUBS.values() if info['user']})
+			arcade.presence(users)
+		except Exception as e:
+			print(f'arcade presence error: {e!r}')
+		time.sleep(PRESENCE_EVERY)
 
 
 def captcha_create() -> dict:

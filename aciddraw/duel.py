@@ -12,7 +12,7 @@ import time
 
 import canvas
 import words
-from storage import DB_LOCK, add_coins, arcade_push, db_connect, dumps, packs_of, spend, stat, username_of
+from storage import DB_LOCK, add_coins, arcade_event, arcade_push, db_connect, dumps, packs_of, spend, stat, username_of
 
 
 EXPIRE_AFTER = 3 * 86400 # seconds without a move before a game ends and its streak is lost
@@ -25,6 +25,7 @@ RATE_MAX     = 4         # chat messages per span
 HINTS        = {'reveal': 10, 'decoys': 15, 'skip': 20} # hint -> price in coins
 BOMB_COST    = 25        # price to swap the three word choices for new ones
 MISSES_KEEP  = 20        # wrong guesses kept per drawing
+STREAK_FEED  = (5, 10, 25, 50) # streaks announced on the arcade activity feed
 CHAT_TIMES   = {}        # user id -> recent chat post times
 
 
@@ -179,6 +180,8 @@ def guess(user_id: int, game_id: int, text: str) -> dict:
 		words.played(c, r['word_id'], [user_id])
 		for uid in (r['drawer'], user_id):
 			arcade_push(c, uid)
+			if streak in STREAK_FEED:
+				arcade_event(uid, 'streak', f'is on a {streak} guess streak')
 		return {'correct': True, 'word': r['word'], 'coins': coins, 'streak': streak}
 
 
