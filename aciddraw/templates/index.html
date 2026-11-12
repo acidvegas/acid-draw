@@ -1,0 +1,227 @@
+<!-- acid-draw - Developed by acidvegas in Python (https://github.com/acidvegas) -->
+<!-- index.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<meta name="theme-color" content="#17121f">
+	<title>acid draw - draw it, guess it</title>
+	<meta name="description" content="Draw a word, your friend guesses it. Turn based 1v1 games with streaks and coins, plus live rooms where everyone races to guess. Free and open source.">
+	<link rel="canonical" href="{{ url }}">
+	<meta property="og:type" content="website">
+	<meta property="og:site_name" content="acid draw">
+	<meta property="og:title" content="acid draw">
+	<meta property="og:description" content="Draw it, guess it. Turn based 1v1 and live rooms.">
+	<meta property="og:url" content="{{ url }}">
+	<meta name="twitter:card" content="summary">
+	<link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}?v={{ cache_v }}">
+	<link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}?v={{ cache_v }}">
+	<link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}?v={{ cache_v }}">
+	<meta name="apple-mobile-web-app-title" content="acid draw">
+	<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ cache_v }}">
+</head>
+<body>
+	<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+		<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></symbol>
+		<symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+		<symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+		<symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+		<symbol id="i-send" viewBox="0 0 24 24"><path d="M4 12 20 4l-6 16-3-7z"/></symbol>
+		<symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20l1-5L16 4l4 4L9 19z"/><path d="M14 6l4 4"/></symbol>
+		<symbol id="i-eraser" viewBox="0 0 24 24"><path d="M8 20h12M4 15l9-9 6 6-7 7H8z"/><path d="M9 10l6 6"/></symbol>
+		<symbol id="i-fill" viewBox="0 0 24 24"><path d="M5 11l7-7 7 7-7 7z"/><path d="M19 15c1 2 2 3 2 4a2 2 0 0 1-4 0c0-1 1-2 2-4z"/></symbol>
+		<symbol id="i-line" viewBox="0 0 24 24"><path d="M5 19 19 5"/></symbol>
+		<symbol id="i-rect" viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="1"/></symbol>
+		<symbol id="i-oval" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="8" ry="6"/></symbol>
+		<symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></symbol>
+		<symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></symbol>
+		<symbol id="i-save" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+		<symbol id="i-play" viewBox="0 0 24 24"><path d="M7 5v14l12-7z"/></symbol>
+		<symbol id="i-ff" viewBox="0 0 24 24"><path d="M4 6v12l8-6zM12 6v12l8-6z"/></symbol>
+		<symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+		<symbol id="i-up" viewBox="0 0 24 24"><path d="M7 11v9H4v-9zM7 11l4-8a2 2 0 0 1 2 2v4h5a2 2 0 0 1 2 2.3l-1.2 7A2 2 0 0 1 16.8 20H7"/></symbol>
+		<symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 9a4 4 0 0 1 0 6M19 6.5a8 8 0 0 1 0 11"/></symbol>
+		<symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 9.5l5 5M22 9.5l-5 5"/></symbol>
+		<symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 21a2 2 0 0 0 4 0"/></symbol>
+		<symbol id="i-down" viewBox="0 0 24 24"><path d="M7 13V4H4v9zM7 13l4 8a2 2 0 0 0 2-2v-4h5a2 2 0 0 0 2-2.3l-1.2-7A2 2 0 0 0 16.8 4H7"/></symbol>
+	</svg>
+
+	<header class="topbar">
+		<a class="logo" href="#/" title="Home"><span class="l1">a</span><span class="l2">c</span><span class="l3">i</span><span class="l4">d</span><span class="l5">draw</span></a>
+		<nav class="nav" id="nav">
+			<a href="#/" data-nav="games">Games<span class="badge hidden" id="turn-badge"></span></a>
+			<a href="#/live" data-nav="live">Live</a>
+			<a href="#/ranks" data-nav="ranks">Ranks</a>
+			<a href="#/words" data-nav="words">Words</a>
+		</nav>
+		<div class="top-right">
+			<button class="icon-btn sound-btn" title="Sound"></button>
+			<button class="coins hidden" id="btn-coins" title="Your coins"><span class="coin"></span><span id="coins">0</span></button>
+			<button class="icon-btn" id="btn-account" title="Account"><svg><use href="#i-user"/></svg></button>
+		</div>
+	</header>
+
+	<main id="main">
+		<!-- Games: async 1v1 -->
+		<section class="view" id="v-games">
+			<div class="page">
+				<div class="card guest-only" id="games-guest">
+					<h2>Draw it. Guess it.</h2>
+					<p>Pick a word, draw it, and your opponent guesses it from a replay of every stroke. Then they draw one back. Keep the streak going to earn coins.</p>
+					<p class="dim">Turn based games need an account. Live rooms are open to everyone.</p>
+					<div class="row"><button class="btn primary" data-act="signup">Make an account</button><button class="btn" data-act="login">Sign in</button><a class="btn" href="#/live">Play live</a></div>
+				</div>
+				<div class="user-only">
+					<div class="card new-game">
+						<h2>New game</h2>
+						<div class="row">
+							<button class="btn primary" id="new-random">Random opponent</button>
+							<button class="btn" id="new-invite"><svg><use href="#i-link"/></svg>Invite link</button>
+							<button class="btn ghost hidden" id="btn-notify"><svg><use href="#i-bell"/></svg>Tell me when it is my turn</button>
+						</div>
+						<form class="row" id="new-user">
+							<input id="new-user-name" placeholder="Challenge a username" maxlength="16" autocomplete="off">
+							<button class="btn" type="submit">Challenge</button>
+						</form>
+					</div>
+					<div class="game-list" id="game-list"></div>
+				</div>
+			</div>
+		</section>
+
+		<!-- Live rooms -->
+		<section class="view hidden" id="v-live">
+			<div class="page">
+				<div class="card">
+					<h2>Live rooms</h2>
+					<p class="dim">Everyone takes a turn drawing while the rest race to type the word. Faster guesses score more.</p>
+					<form class="row" id="join-code">
+						<input id="join-code-input" placeholder="Room code" maxlength="4" autocomplete="off" class="code-input">
+						<button class="btn" type="submit">Join</button>
+						<button class="btn primary" type="button" id="btn-create-room">Create a room</button>
+					</form>
+				</div>
+				<h3 class="list-head">Public rooms</h3>
+				<div class="room-list" id="room-list"></div>
+			</div>
+		</section>
+
+		<!-- Leaderboards -->
+		<section class="view hidden" id="v-ranks">
+			<div class="page">
+				<div class="tabs" id="rank-tabs">
+					<button data-board="coins" class="on">Coins earned</button>
+					<button data-board="streak">Best streak</button>
+					<button data-board="live">Live wins</button>
+					<button data-board="drawer">Best drawer</button>
+				</div>
+				<div class="card"><ol class="ranks" id="ranks"></ol><p class="dim small" id="rank-note"></p></div>
+			</div>
+		</section>
+
+		<!-- Words: submit and admin -->
+		<section class="view hidden" id="v-words">
+			<div class="page">
+				<div class="card">
+					<h2>Submit a word</h2>
+					<p class="dim">New words show up now and then as a choice marked <span class="new-tag">new</span>. Players who play them vote them in or out.</p>
+					<form class="row user-only" id="submit-word">
+						<input id="submit-text" placeholder="space hamster" maxlength="24" autocomplete="off">
+						<select id="submit-tier"><option value="1">Easy</option><option value="2" selected>Medium</option><option value="3">Hard</option></select>
+						<button class="btn primary" type="submit">Submit</button>
+					</form>
+					<p class="guest-only dim">Sign in to submit words.</p>
+				</div>
+				<div class="card user-only">
+					<h3>Your words</h3>
+					<div class="word-table" id="my-words"></div>
+				</div>
+				<div class="card hidden" id="admin">
+					<h3>Admin</h3>
+					<form class="row" id="admin-add">
+						<input id="admin-add-text" placeholder="Add a word straight to the pool" maxlength="24" autocomplete="off">
+						<select id="admin-add-tier"><option value="1">Easy</option><option value="2" selected>Medium</option><option value="3">Hard</option></select>
+						<button class="btn" type="submit">Add</button>
+					</form>
+					<form class="row" id="admin-filter">
+						<select id="admin-status"><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="banned">Banned</option><option value="all">All</option></select>
+						<input id="admin-q" placeholder="Search every word" autocomplete="off">
+						<button class="btn" type="submit">Search</button>
+					</form>
+					<div class="word-table" id="admin-words"></div>
+					<div class="row" id="admin-pages"></div>
+				</div>
+			</div>
+		</section>
+
+		<!-- One async game -->
+		<section class="view hidden" id="v-game">
+			<div class="play">
+				<div class="play-head">
+					<a class="icon-btn" href="#/" title="Back"><svg><use href="#i-back"/></svg></a>
+					<div class="vs"><span class="dim">vs</span> <b id="g-opp"></b></div>
+					<div class="streak" id="g-streak" title="Streak"></div>
+					<button class="icon-btn sound-btn" title="Sound"></button>
+					<button class="icon-btn" id="g-chat-btn" title="Chat"><svg><use href="#i-chat"/></svg><span class="badge hidden" id="g-chat-badge"></span></button>
+				</div>
+				<div class="banner hidden" id="g-banner"></div>
+				<div class="play-body">
+					<div class="stage">
+						<div class="prompt" id="g-prompt"></div>
+						<div class="board-wrap" id="g-board-wrap"></div>
+						<div class="under" id="g-under"></div>
+					</div>
+					<aside class="side" id="g-side">
+						<div class="side-chat hidden" id="g-chat">
+							<div class="chat-log" id="g-chat-log"></div>
+							<form class="chat-form" id="g-chat-form"><input id="g-chat-input" placeholder="Talk trash" maxlength="300" autocomplete="off"><button class="icon-btn" type="submit"><svg><use href="#i-send"/></svg></button></form>
+						</div>
+						<div class="history" id="g-history"></div>
+					</aside>
+				</div>
+			</div>
+		</section>
+
+		<!-- One live room -->
+		<section class="view hidden" id="v-room">
+			<div class="play">
+				<div class="play-head">
+					<a class="icon-btn" href="#/live" title="Leave" id="r-leave"><svg><use href="#i-back"/></svg></a>
+					<div class="vs"><b id="r-name"></b> <span class="dim" id="r-round"></span></div>
+					<button class="icon-btn sound-btn" title="Sound"></button>
+					<div class="timer" id="r-timer"></div>
+				</div>
+				<div class="play-body room-body">
+					<ol class="players" id="r-players"></ol>
+					<div class="stage">
+						<div class="prompt" id="r-prompt"></div>
+						<div class="board-wrap" id="r-board-wrap"></div>
+						<div class="under" id="r-under"></div>
+					</div>
+					<aside class="side room-chat" id="r-chat">
+						<div class="chat-head"><b>Chat and guesses</b><button class="icon-btn sm" type="button" id="r-chat-close" title="Close"><svg><use href="#i-x"/></svg></button></div>
+						<div class="chat-log" id="r-chat-log"></div>
+						<form class="chat-form" id="r-chat-form"><button class="icon-btn chat-toggle" type="button" id="r-chat-toggle" title="Chat and guesses"><svg><use href="#i-chat"/></svg><span class="badge hidden" id="r-chat-badge"></span></button><input id="r-chat-input" placeholder="Type your guess" maxlength="120" autocomplete="off" enterkeyhint="send"><button class="icon-btn" type="submit"><svg><use href="#i-send"/></svg></button></form>
+					</aside>
+				</div>
+			</div>
+		</section>
+	</main>
+
+	<div class="modal-bg hidden" id="modal-bg">
+		<div class="modal" role="dialog" aria-modal="true">
+			<button class="icon-btn modal-close" id="modal-close" title="Close"><svg><use href="#i-x"/></svg></button>
+			<div id="modal"></div>
+		</div>
+	</div>
+
+	<div class="toast hidden" id="toast"></div>
+
+	<script src="{{ url_for('static', filename='utils.js') }}?v={{ cache_v }}"></script>
+</body>
+</html>
