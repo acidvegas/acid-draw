@@ -124,6 +124,46 @@ class TestApp(unittest.TestCase):
 		_, cv = self.call('carol', f'/games/{r2["id"]}')
 		self.assertEqual(cv['step'], 'guess')
 
+	def test_ip_rooms(self):
+		'''One address can have 5 live rooms open, a 6th is refused while another address still gets one.'''
+
+		def create(ip: str):
+			res = self.client.post('/live/create', json={'name': 'roomer'}, environ_base={'REMOTE_ADDR': ip})
+			return res.status_code, res.get_json()
+
+		codes = [create('10.1.0.1')[1]['code'] for _ in range(live.IP_ROOMS_MAX)]
+		st, res = create('10.1.0.1')
+		self.assertEqual(st, 429)
+		self.assertIn('5 open rooms', res['error'])
+		st, res = create('10.1.0.2')
+		self.assertEqual(st, 200)
+		codes.append(res['code'])
+		with hub.LOCK:
+			for code in codes:
+				hub.ROOMS.pop(code, None)
+		self.assertEqual(create('10.1.0.1')[0], 200) # a reaped room frees its slot
+		with hub.LOCK:
+			for code in [c for c, r in hub.ROOMS.items() if r.ip == '10.1.0.1']:
+				del hub.ROOMS[code]
+
+	def test_ip_streams(self):
+		'''One address can have 20 event streams open, a 21st is refused, and closing one frees its slot.'''
+
+		def stream(ip: str):
+			return self.client.get('/events', buffered=False, environ_base={'REMOTE_ADDR': ip})
+
+		open_ = [stream('10.2.0.1') for _ in range(draw_app.IP_STREAMS)]
+		self.assertTrue(all(r.status_code == 200 for r in open_))
+		self.assertEqual(stream('10.2.0.1').status_code, 429)
+		other = stream('10.2.0.2')
+		self.assertEqual(other.status_code, 200)
+		open_.pop().close()
+		open_.append(stream('10.2.0.1'))
+		self.assertEqual(open_[-1].status_code, 200)
+		for r in open_ + [other]:
+			r.close()
+		self.assertFalse(any(info['ip'] in ('10.2.0.1', '10.2.0.2') for info in hub.SUBS.values()))
+
 	def test_live_room(self):
 		'''A guest and a player share a room: the word stays hidden from the guesser until they type it.'''
 

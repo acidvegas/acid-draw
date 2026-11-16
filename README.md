@@ -24,6 +24,7 @@ Draw a word, someone else guesses it. Turn based 1v1 games and live rooms in the
 - Guesses one letter off are flagged as close *(only to the guesser)*. Players who already got the word chat among themselves so they can not give it away
 - Rooms are public *(listed)* or private *(code or link only)*. The host sets rounds, time to draw and room size, starts the game and can kick players
 - Guests can play with just a name. Names that belong to accounts are reserved
+- Up to 5 open rooms and 20 open event streams per IP address
 - Right guesses pay coins *(1, 2 or 3 by word)* to the guesser and the drawer, but only between two accounts, only once something real is drawn, and only up to 150 coins a day per account from live rooms
 
 ### Drawing

@@ -31,6 +31,7 @@ ADMINS        = {n.strip().lower() for n in os.environ.get('DRAW_ADMINS', '').sp
 PUBLIC_URL    = os.environ.get('DRAW_PUBLIC_URL', '').rstrip('/') # main address for crawlers and share cards, e.g. https://draw.acid.vegas
 PING_EVERY    = 15   # seconds between keep-alive comments on an idle event stream
 DB_EVERY      = 15   # seconds between refreshing database backed parts of an idle event stream
+IP_STREAMS    = 20   # event streams one IP address can have open at once
 
 if PROXIES:
 	app.wsgi_app = ProxyFix(app.wsgi_app, x_for=PROXIES, x_proto=PROXIES, x_host=PROXIES)
@@ -342,7 +343,9 @@ def events():
 	pid      = request.args.get('pid') or ''
 	q        = queue.Queue(maxsize=8)
 	with hub.LOCK:
-		hub.SUBS[q] = {'user': user_id, 'room': code or None, 'game': game_id}
+		if sum(1 for info in hub.SUBS.values() if info['ip'] == request.remote_addr) >= IP_STREAMS:
+			return api_error(f'you already have {IP_STREAMS} streams open, close one first', 429)
+		hub.SUBS[q] = {'user': user_id, 'room': code or None, 'game': game_id, 'ip': request.remote_addr}
 
 	def send(name: str, data) -> str:
 		return f'event: {name}\ndata: {json.dumps({"now": time.time(), "data": data}, separators=(",", ":"))}\n\n'
@@ -409,7 +412,13 @@ def events():
 			with hub.LOCK:
 				hub.SUBS.pop(q, None)
 
-	return Response(stream(), mimetype='text/event-stream', headers={'Cache-Control': 'no-cache, no-transform, no-store', 'X-Accel-Buffering': 'no'})
+	def release():
+		with hub.LOCK:
+			hub.SUBS.pop(q, None)
+
+	resp = Response(stream(), mimetype='text/event-stream', headers={'Cache-Control': 'no-cache, no-transform, no-store', 'X-Accel-Buffering': 'no'})
+	resp.call_on_close(release) # the generator's finally never runs if the client leaves before the first chunk
+	return resp
 
 
 @app.route('/favicon.ico')
@@ -613,8 +622,10 @@ def live_create():
 	with hub.LOCK:
 		if len(hub.ROOMS) >= live.ROOMS_MAX:
 			return api_error('too many rooms are open, join one instead')
+		if sum(1 for r in hub.ROOMS.values() if r.ip == request.remote_addr) >= live.IP_ROOMS_MAX:
+			return api_error(f'you already have {live.IP_ROOMS_MAX} open rooms, finish or leave one first', 429)
 		code = hub.new_code()
-		room = live.Room(code, f'{name}\'s room', data.get('public') is not False, data.get('rounds') if data.get('rounds') in live.ROUND_CHOICE else 3, data.get('seconds') if data.get('seconds') in live.TIME_CHOICE else 80, data.get('size') if data.get('size') in live.SIZE_CHOICE else 8)
+		room = live.Room(code, f'{name}\'s room', data.get('public') is not False, data.get('rounds') if data.get('rounds') in live.ROUND_CHOICE else 3, data.get('seconds') if data.get('seconds') in live.TIME_CHOICE else 80, data.get('size') if data.get('size') in live.SIZE_CHOICE else 8, request.remote_addr)
 		pid, error = room.join(user_id, name)
 		hub.ROOMS[code] = room
 	hub.notify()

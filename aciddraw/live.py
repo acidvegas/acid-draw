@@ -20,6 +20,7 @@ DONE_TIME    = 20             # seconds the final scores stay up before the room
 AWAY_AFTER   = 30             # seconds without the room open before a player is dropped
 EMPTY_AFTER  = 60             # seconds an empty room stays around
 ROOMS_MAX    = 200
+IP_ROOMS_MAX = 5              # rooms one IP address can have open at once
 ROUND_CHOICE = (1, 2, 3, 4, 5, 6)
 TIME_CHOICE  = (60, 80, 100, 120)
 SIZE_CHOICE  = range(2, 11)
@@ -36,8 +37,9 @@ FEED_PLAYERS = 3              # players a live game needs before its winner goes
 class Room:
 	'''A live room.'''
 
-	def __init__(self, code: str, name: str, public: bool, rounds: int, seconds: int, size: int):
+	def __init__(self, code: str, name: str, public: bool, rounds: int, seconds: int, size: int, ip: str = None):
 		self.code        = code
+		self.ip          = ip   # address of whoever opened the room
 		self.name        = name
 		self.public      = public
 		self.rounds      = rounds

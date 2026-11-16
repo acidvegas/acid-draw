@@ -9,7 +9,7 @@ import time
 
 
 LOCK         = threading.RLock() # guards every live room; always taken before the database lock
-SUBS         = {}                # event stream queue -> {'user': id, 'room': code, 'game': id}
+SUBS         = {}                # event stream queue -> {'user': id, 'room': code, 'game': id, 'ip': address}
 ROOMS        = {}                # room code -> live room
 CODE_CHARS   = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 EXPIRE_EVERY = 60                # seconds between sweeps for async games nobody has moved in
