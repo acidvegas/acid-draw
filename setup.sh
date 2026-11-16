@@ -4,6 +4,7 @@
 
 set -e
 docker build -t aciddraw .
+docker run --rm --user root -v aciddraw_data:/data aciddraw chown -R app:app /data # data made by older root containers
 docker rm -f aciddraw 2>/dev/null || true
 ARCADE_ARGS=''
 if [ -n "$ARCADE_URL" ]; then
