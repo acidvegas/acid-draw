@@ -74,7 +74,7 @@
 		<div class="top-right">
 			<button class="icon-btn sound-btn" title="Sound"></button>
 			<button class="coins hidden" id="btn-coins" title="Your coins"><span class="coin"></span><span id="coins">0</span></button>
-			<button class="icon-btn" id="btn-account" title="Account"><svg><use href="#i-user"/></svg></button>
+			<button class="icon-btn" id="btn-account" title="Account" aria-label="Account"><svg><use href="#i-user"/></svg></button>
 		</div>
 	</header>
 
@@ -97,7 +97,7 @@
 							<button class="btn ghost hidden" id="btn-notify"><svg><use href="#i-bell"/></svg>Tell me when it is my turn</button>
 						</div>
 						<form class="row" id="new-user">
-							<input id="new-user-name" placeholder="Challenge a username" maxlength="16" autocomplete="off">
+							<input id="new-user-name" placeholder="Challenge a username" aria-label="Challenge a username" maxlength="16" autocomplete="off">
 							<button class="btn" type="submit">Challenge</button>
 						</form>
 					</div>
@@ -113,7 +113,7 @@
 					<h2>Live rooms</h2>
 					<p class="dim">Everyone takes a turn drawing while the rest race to type the word. Faster guesses score more.</p>
 					<form class="row" id="join-code">
-						<input id="join-code-input" placeholder="Room code" maxlength="4" autocomplete="off" class="code-input">
+						<input id="join-code-input" placeholder="Room code" aria-label="Room code" maxlength="4" autocomplete="off" class="code-input">
 						<button class="btn" type="submit">Join</button>
 						<button class="btn primary" type="button" id="btn-create-room">Create a room</button>
 					</form>
@@ -126,7 +126,7 @@
 		<!-- Leaderboards -->
 		<section class="view hidden" id="v-ranks">
 			<div class="page">
-				<div class="tabs" id="rank-tabs">
+				<div class="tabs" id="rank-tabs" role="group" aria-label="Leaderboard">
 					<button data-board="coins" class="on">Coins earned</button>
 					<button data-board="streak">Best streak</button>
 					<button data-board="live">Live wins</button>
@@ -143,8 +143,8 @@
 					<h2>Submit a word</h2>
 					<p class="dim">New words show up now and then as a choice marked <span class="new-tag">new</span>. Players who play them vote them in or out.</p>
 					<form class="row user-only" id="submit-word">
-						<input id="submit-text" placeholder="space hamster" maxlength="24" autocomplete="off">
-						<select id="submit-tier"><option value="1">Easy</option><option value="2" selected>Medium</option><option value="3">Hard</option></select>
+						<input id="submit-text" placeholder="space hamster" aria-label="Word to submit" maxlength="24" autocomplete="off">
+						<select id="submit-tier" aria-label="Tier"><option value="1">Easy</option><option value="2" selected>Medium</option><option value="3">Hard</option></select>
 						<button class="btn primary" type="submit">Submit</button>
 					</form>
 					<p class="guest-only dim">Sign in to submit words.</p>
@@ -156,13 +156,13 @@
 				<div class="card hidden" id="admin">
 					<h3>Admin</h3>
 					<form class="row" id="admin-add">
-						<input id="admin-add-text" placeholder="Add a word straight to the pool" maxlength="24" autocomplete="off">
-						<select id="admin-add-tier"><option value="1">Easy</option><option value="2" selected>Medium</option><option value="3">Hard</option></select>
+						<input id="admin-add-text" placeholder="Add a word straight to the pool" aria-label="Add a word straight to the pool" maxlength="24" autocomplete="off">
+						<select id="admin-add-tier" aria-label="Tier"><option value="1">Easy</option><option value="2" selected>Medium</option><option value="3">Hard</option></select>
 						<button class="btn" type="submit">Add</button>
 					</form>
 					<form class="row" id="admin-filter">
-						<select id="admin-status"><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="banned">Banned</option><option value="all">All</option></select>
-						<input id="admin-q" placeholder="Search every word" autocomplete="off">
+						<select id="admin-status" aria-label="Status"><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="banned">Banned</option><option value="all">All</option></select>
+						<input id="admin-q" placeholder="Search every word" aria-label="Search every word" autocomplete="off">
 						<button class="btn" type="submit">Search</button>
 					</form>
 					<div class="word-table" id="admin-words"></div>
@@ -175,11 +175,11 @@
 		<section class="view hidden" id="v-game">
 			<div class="play">
 				<div class="play-head">
-					<a class="icon-btn" href="#/" title="Back"><svg><use href="#i-back"/></svg></a>
+					<a class="icon-btn" href="#/" title="Back" aria-label="Back to games"><svg><use href="#i-back"/></svg></a>
 					<div class="vs"><span class="dim">vs</span> <b id="g-opp"></b></div>
 					<div class="streak" id="g-streak" title="Streak"></div>
 					<button class="icon-btn sound-btn" title="Sound"></button>
-					<button class="icon-btn" id="g-chat-btn" title="Chat"><svg><use href="#i-chat"/></svg><span class="badge hidden" id="g-chat-badge"></span></button>
+					<button class="icon-btn" id="g-chat-btn" title="Chat" aria-label="Chat"><svg><use href="#i-chat"/></svg><span class="badge hidden" id="g-chat-badge"></span></button>
 				</div>
 				<div class="banner hidden" id="g-banner"></div>
 				<div class="play-body">
@@ -191,7 +191,7 @@
 					<aside class="side" id="g-side">
 						<div class="side-chat hidden" id="g-chat">
 							<div class="chat-log" id="g-chat-log"></div>
-							<form class="chat-form" id="g-chat-form"><input id="g-chat-input" placeholder="Talk trash" maxlength="300" autocomplete="off"><button class="icon-btn" type="submit"><svg><use href="#i-send"/></svg></button></form>
+							<form class="chat-form" id="g-chat-form"><input id="g-chat-input" placeholder="Talk trash" aria-label="Chat message" maxlength="300" autocomplete="off"><button class="icon-btn" type="submit" aria-label="Send"><svg><use href="#i-send"/></svg></button></form>
 						</div>
 						<div class="history" id="g-history"></div>
 					</aside>
@@ -203,22 +203,22 @@
 		<section class="view hidden" id="v-room">
 			<div class="play">
 				<div class="play-head">
-					<a class="icon-btn" href="#/live" title="Leave" id="r-leave"><svg><use href="#i-back"/></svg></a>
+					<a class="icon-btn" href="#/live" title="Leave" aria-label="Leave room" id="r-leave"><svg><use href="#i-back"/></svg></a>
 					<div class="vs"><b id="r-name"></b> <span class="dim" id="r-round"></span></div>
 					<button class="icon-btn sound-btn" title="Sound"></button>
 					<div class="timer" id="r-timer"></div>
 				</div>
 				<div class="play-body room-body">
-					<ol class="players" id="r-players"></ol>
+					<ol class="players" id="r-players" aria-label="Players"></ol>
 					<div class="stage">
 						<div class="prompt" id="r-prompt"></div>
 						<div class="board-wrap" id="r-board-wrap"></div>
 						<div class="under" id="r-under"></div>
 					</div>
 					<aside class="side room-chat" id="r-chat">
-						<div class="chat-head"><b>Chat and guesses</b><button class="icon-btn sm" type="button" id="r-chat-close" title="Close"><svg><use href="#i-x"/></svg></button></div>
+						<div class="chat-head"><b>Chat and guesses</b><button class="icon-btn sm" type="button" id="r-chat-close" title="Close" aria-label="Close chat"><svg><use href="#i-x"/></svg></button></div>
 						<div class="chat-log" id="r-chat-log"></div>
-						<form class="chat-form" id="r-chat-form"><button class="icon-btn chat-toggle" type="button" id="r-chat-toggle" title="Chat and guesses"><svg><use href="#i-chat"/></svg><span class="badge hidden" id="r-chat-badge"></span></button><input id="r-chat-input" placeholder="Type your guess" maxlength="120" autocomplete="off" enterkeyhint="send"><button class="icon-btn" type="submit"><svg><use href="#i-send"/></svg></button></form>
+						<form class="chat-form" id="r-chat-form"><button class="icon-btn chat-toggle" type="button" id="r-chat-toggle" title="Chat and guesses" aria-label="Chat and guesses"><svg><use href="#i-chat"/></svg><span class="badge hidden" id="r-chat-badge"></span></button><input id="r-chat-input" placeholder="Type your guess" aria-label="Guess or chat" maxlength="120" autocomplete="off" enterkeyhint="send"><button class="icon-btn" type="submit" aria-label="Send"><svg><use href="#i-send"/></svg></button></form>
 					</aside>
 				</div>
 			</div>
@@ -227,12 +227,13 @@
 
 	<div class="modal-bg hidden" id="modal-bg">
 		<div class="modal" role="dialog" aria-modal="true">
-			<button class="icon-btn modal-close" id="modal-close" title="Close"><svg><use href="#i-x"/></svg></button>
+			<button class="icon-btn modal-close" id="modal-close" title="Close" aria-label="Close"><svg><use href="#i-x"/></svg></button>
 			<div id="modal"></div>
 		</div>
 	</div>
 
 	<div class="toast hidden" id="toast"></div>
+	<div class="sr-only" id="sr-live" aria-live="polite"></div>
 
 	<script src="{{ url_for('static', filename='utils.js') }}?v={{ cache_v }}"></script>
 </body>

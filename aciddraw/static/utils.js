@@ -77,10 +77,18 @@ async function api(path, body) {
 	return data;
 }
 
+function announce(text) {
+	// Read out by screen readers through the hidden live region
+	const el = $('sr-live');
+	el.textContent = '';
+	setTimeout(() => { el.textContent = text; }, 50);
+}
+
 let toastTimer = null;
 function toast(text) {
 	const el = $('toast');
 	el.textContent = text;
+	announce(text);
 	el.classList.remove('hidden');
 	clearTimeout(toastTimer);
 	toastTimer = setTimeout(() => el.classList.add('hidden'), 2600);
@@ -167,7 +175,7 @@ function unlockAudio() {
 function setSound(on) {
 	soundOn = on;
 	localStorage.setItem(SOUND_KEY, on ? '1' : '0');
-	document.querySelectorAll('.sound-btn').forEach((b) => { b.innerHTML = `<svg><use href="#i-${on ? 'sound' : 'mute'}"/></svg>`; b.title = on ? 'Sound on' : 'Sound off'; });
+	document.querySelectorAll('.sound-btn').forEach((b) => { b.innerHTML = `<svg><use href="#i-${on ? 'sound' : 'mute'}"/></svg>`; b.title = on ? 'Sound on' : 'Sound off'; b.setAttribute('aria-label', b.title); });
 	if (on) { unlockAudio(); sfx('pop'); }
 }
 
@@ -293,6 +301,8 @@ class Board {
 		const size   = cfg ? cfg.size : 800;
 		this.el      = document.createElement('div');
 		this.el.className = 'board';
+		this.el.setAttribute('role', 'img');
+		this.el.setAttribute('aria-label', 'Drawing board');
 		this.canvas  = document.createElement('canvas');
 		this.over    = document.createElement('canvas');
 		this.canvas.width = this.canvas.height = this.over.width = this.over.height = size;
@@ -303,6 +313,10 @@ class Board {
 		this.turn    = null;
 		wrap.replaceChildren(this.el);
 		this.reset();
+	}
+
+	label(text) {
+		this.el.setAttribute('aria-label', text);
 	}
 
 	reset() {
@@ -538,27 +552,27 @@ class Recorder {
 		const locked = Object.keys(cfg.packs).filter((k) => !this.packs.includes(k));
 		el.innerHTML = `<div class="tools">
 			<div class="tool-row">
-				${TOOLS.map(([k, icon, label]) => `<button class="tool${k === this.tool ? ' on' : ''}" data-tool="${k}" title="${label}"><svg><use href="#${icon}"/></svg></button>`).join('')}
+				${TOOLS.map(([k, icon, label]) => `<button class="tool${k === this.tool ? ' on' : ''}" data-tool="${k}" title="${label}" aria-label="${label}" aria-pressed="${k === this.tool}"><svg><use href="#${icon}"/></svg></button>`).join('')}
 				<span class="sep"></span>
-				${cfg.sizes.map((s) => `<button class="size${s === this.size ? ' on' : ''}" data-size="${s}" title="Brush ${s}"><i style="width:${Math.max(4, s / 1.4)}px;height:${Math.max(4, s / 1.4)}px"></i></button>`).join('')}
+				${cfg.sizes.map((s) => `<button class="size${s === this.size ? ' on' : ''}" data-size="${s}" title="Brush ${s}" aria-label="Brush size ${s}" aria-pressed="${s === this.size}"><i style="width:${Math.max(4, s / 1.4)}px;height:${Math.max(4, s / 1.4)}px"></i></button>`).join('')}
 				<span class="sep"></span>
-				<button class="tool" data-do="undo" title="Undo"><svg><use href="#i-undo"/></svg></button>
-				<button class="tool" data-do="clear" title="Clear"><svg><use href="#i-trash"/></svg></button>
+				<button class="tool" data-do="undo" title="Undo" aria-label="Undo"><svg><use href="#i-undo"/></svg></button>
+				<button class="tool" data-do="clear" title="Clear" aria-label="Clear"><svg><use href="#i-trash"/></svg></button>
 			</div>
-			<div class="swatches">
-				${colors.map((c) => `<button class="sw${c === this.color ? ' on' : ''}" data-color="${c}" style="background:${c}" title="${c}"></button>`).join('')}
-				${locked.length && me ? `<button class="sw more" data-do="shop" title="More colors">+</button>` : ''}
+			<div class="swatches" role="group" aria-label="Colors">
+				${colors.map((c) => `<button class="sw${c === this.color ? ' on' : ''}" data-color="${c}" style="background:${c}" title="${c}" aria-label="Color ${c}" aria-pressed="${c === this.color}"></button>`).join('')}
+				${locked.length && me ? `<button class="sw more" data-do="shop" title="More colors" aria-label="More colors">+</button>` : ''}
 			</div>
 		</div>`;
 		el.querySelector('.tools').addEventListener('click', (e) => {
 			const b = e.target.closest('button');
 			if (!b) return;
-			if (b.dataset.tool) { this.tool = b.dataset.tool; el.querySelectorAll('[data-tool]').forEach((x) => x.classList.toggle('on', x === b)); }
-			if (b.dataset.size) { this.size = +b.dataset.size; el.querySelectorAll('[data-size]').forEach((x) => x.classList.toggle('on', x === b)); }
+			if (b.dataset.tool) { this.tool = b.dataset.tool; el.querySelectorAll('[data-tool]').forEach((x) => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); }); }
+			if (b.dataset.size) { this.size = +b.dataset.size; el.querySelectorAll('[data-size]').forEach((x) => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); }); }
 			if (b.dataset.color) {
 				this.color = b.dataset.color;
-				if (this.tool === 'eraser') { this.tool = 'pen'; el.querySelectorAll('[data-tool]').forEach((x) => x.classList.toggle('on', x.dataset.tool === 'pen')); }
-				el.querySelectorAll('[data-color]').forEach((x) => x.classList.toggle('on', x === b));
+				if (this.tool === 'eraser') { this.tool = 'pen'; el.querySelectorAll('[data-tool]').forEach((x) => { x.classList.toggle('on', x.dataset.tool === 'pen'); x.setAttribute('aria-pressed', x.dataset.tool === 'pen'); }); }
+				el.querySelectorAll('[data-color]').forEach((x) => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); });
 			}
 			if (b.dataset.do === 'undo') this.undo();
 			if (b.dataset.do === 'clear') this.clear();
@@ -600,7 +614,7 @@ async function trySso() {
 function updateUser() {
 	document.body.classList.toggle('signed-in', !!me);
 	$('btn-coins').classList.toggle('hidden', !me);
-	if (me) $('coins').textContent = me.coins.toLocaleString();
+	if (me) { $('coins').textContent = me.coins.toLocaleString(); $('btn-coins').setAttribute('aria-label', `${me.coins.toLocaleString()} coins`); }
 	const turns = me ? me.turns : 0;
 	$('turn-badge').textContent = turns;
 	$('turn-badge').classList.toggle('hidden', !turns);
@@ -620,9 +634,9 @@ function openAuth(mode) {
 	const signup = mode === 'signup';
 	modal(`<h2>${signup ? 'Make an account' : 'Sign in'}</h2>
 		<form id="auth-form" class="stack">
-			<input id="auth-user" placeholder="Username" maxlength="16" autocomplete="username" required>
-			<input id="auth-pass" type="password" placeholder="Password" maxlength="128" autocomplete="${signup ? 'new-password' : 'current-password'}" required>
-			${signup ? `<div class="captcha" id="captcha-img" title="New captcha"></div><input id="auth-captcha" placeholder="Letters above" maxlength="5" autocomplete="off" required>` : ''}
+			<input id="auth-user" placeholder="Username" aria-label="Username" maxlength="16" autocomplete="username" required>
+			<input id="auth-pass" type="password" placeholder="Password" aria-label="Password" maxlength="128" autocomplete="${signup ? 'new-password' : 'current-password'}" required>
+			${signup ? `<div class="captcha" id="captcha-img" title="New captcha" role="img" aria-label="Captcha letters, click for a new one"></div><input id="auth-captcha" placeholder="Letters above" aria-label="Captcha letters" maxlength="5" autocomplete="off" required>` : ''}
 			<button class="btn primary" type="submit">${signup ? `Sign up and get ${cfg.start} coins` : 'Sign in'}</button>
 			<button class="btn link" type="button" id="auth-switch">${signup ? 'Have an account? Sign in' : 'New here? Make an account'}</button>
 		</form>`);
@@ -657,7 +671,7 @@ function openAccount(tab) {
 	}).join('');
 	modal(`<h2>${pic(me.id, 'sm')}${esc(me.username)}</h2>
 		<div class="wallet"><span class="coin lg"></span><b>${me.coins.toLocaleString()}</b> coins</div>
-		<div class="tabs" id="acct-tabs"><button data-tab="stats" class="${tab !== 'shop' ? 'on' : ''}">Stats</button><button data-tab="shop" class="${tab === 'shop' ? 'on' : ''}">Color packs</button></div>
+		<div class="tabs" id="acct-tabs" role="group" aria-label="Account"><button data-tab="stats" class="${tab !== 'shop' ? 'on' : ''}">Stats</button><button data-tab="shop" class="${tab === 'shop' ? 'on' : ''}">Color packs</button></div>
 		<div id="acct-stats" class="${tab === 'shop' ? 'hidden' : ''}"><div class="stats">${stats.map(([k, v]) => `<div><b>${v}</b><span>${k}</span></div>`).join('')}</div>
 			<p class="dim small">Coins come from words guessed: easy 1, medium 2, hard 3, paid to both the drawer and the guesser. Spend them on color packs, hints and bombs.</p>
 			${cfg.arcade_public_url ? `<a class="btn" href="${esc(cfg.arcade_public_url)}/account" target="_blank" rel="noopener">Account settings</a> ` : ''}<button class="btn" id="btn-logout">Sign out</button></div>
@@ -701,7 +715,7 @@ async function loadMe() {
 function voteBox(info) {
 	// Thumbs up or down for a community word after it was played
 	if (!info || info.by || !me) return '';
-	return `<div class="vote" data-word="${info.id}"><span>New word, keep it?</span><button class="icon-btn${info.vote === 1 ? ' on' : ''}" data-vote="1" title="Keep it"><svg><use href="#i-up"/></svg></button><button class="icon-btn${info.vote === -1 ? ' on' : ''}" data-vote="-1" title="Drop it"><svg><use href="#i-down"/></svg></button></div>`;
+	return `<div class="vote" data-word="${info.id}"><span>New word, keep it?</span><button class="icon-btn${info.vote === 1 ? ' on' : ''}" data-vote="1" title="Keep it" aria-label="Keep it" aria-pressed="${info.vote === 1}"><svg><use href="#i-up"/></svg></button><button class="icon-btn${info.vote === -1 ? ' on' : ''}" data-vote="-1" title="Drop it" aria-label="Drop it" aria-pressed="${info.vote === -1}"><svg><use href="#i-down"/></svg></button></div>`;
 }
 
 document.addEventListener('click', async (e) => {
@@ -709,7 +723,7 @@ document.addEventListener('click', async (e) => {
 	if (!b) return;
 	const box = b.closest('.vote');
 	await api('/words/vote', { word: +box.dataset.word, vote: +b.dataset.vote });
-	box.querySelectorAll('[data-vote]').forEach((x) => x.classList.toggle('on', x === b));
+	box.querySelectorAll('[data-vote]').forEach((x) => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); });
 	toast('Thanks for voting');
 });
 
@@ -833,7 +847,7 @@ function pic(uid, size) {
 
 function avatar(name, uid, size) {
 	// The arcade picture when there is one, otherwise the colored first letter
-	return pic(uid, size) || `<span class="avatar${size ? ' ' + size : ''}" style="--h:${hue(name)}">${esc(name[0].toUpperCase())}</span>`;
+	return pic(uid, size) || `<span class="avatar${size ? ' ' + size : ''}" style="--h:${hue(name)}" aria-hidden="true">${esc(name[0].toUpperCase())}</span>`;
 }
 
 function startChallenge() {
@@ -919,7 +933,7 @@ function renderBanner(g) {
 	if (!l || !l.mine || l.id === +sessionStorage.getItem('seen-last-' + g.id)) { el.classList.add('hidden'); return; }
 	const tried = l.misses.length ? ` <span class="dim">after ${l.misses.length} wrong ${l.misses.length === 1 ? 'guess' : 'guesses'}: ${l.misses.map((m) => `<s>${esc(m)}</s>`).join(' ')}</span>` : '';
 	const text  = (l.result === 'guessed' ? `${esc(g.opponent)} guessed your <b>${esc(l.word)}</b>! +${l.tier} coins` : `${esc(g.opponent)} ${l.result === 'skipped' ? 'skipped' : 'gave up on'} your <b>${esc(l.word)}</b>`) + tried;
-	el.innerHTML = `<span>${text}</span><button class="btn sm" data-replay="${l.id}">Replay</button><button class="icon-btn" id="banner-x"><svg><use href="#i-x"/></svg></button>`;
+	el.innerHTML = `<span>${text}</span><button class="btn sm" data-replay="${l.id}">Replay</button><button class="icon-btn" id="banner-x" aria-label="Dismiss"><svg><use href="#i-x"/></svg></button>`;
 	el.classList.remove('hidden');
 	$('banner-x').onclick = () => { sessionStorage.setItem('seen-last-' + g.id, l.id); el.classList.add('hidden'); };
 }
@@ -927,7 +941,7 @@ function renderBanner(g) {
 function renderHistory(g) {
 	const rows = g.history.map((h) => {
 		const res = { pending: 'waiting', guessed: 'guessed', passed: 'gave up', skipped: 'skipped' }[h.result];
-		return `<li class="r-${h.result}"><span class="who">${h.mine ? 'You drew' : 'They drew'}</span><b>${h.word ? esc(h.word) : '???'}</b><span class="dim">${res}</span>${h.word || h.result !== 'pending' ? `<button class="icon-btn sm" data-replay="${h.id}" title="Replay"><svg><use href="#i-play"/></svg></button>` : ''}</li>`;
+		return `<li class="r-${h.result}"><span class="who">${h.mine ? 'You drew' : 'They drew'}</span><b>${h.word ? esc(h.word) : '???'}</b><span class="dim">${res}</span>${h.word || h.result !== 'pending' ? `<button class="icon-btn sm" data-replay="${h.id}" title="Replay" aria-label="Replay ${h.word ? esc(h.word) : 'drawing'}"><svg><use href="#i-play"/></svg></button>` : ''}</li>`;
 	}).join('');
 	$('g-history').innerHTML = `<h4>History <span class="dim small">best streak ${g.best}</span></h4><ul>${rows || '<li class="dim">Nothing drawn yet</li>'}</ul>${g.status !== 'over' ? '<button class="btn sm ghost" id="g-resign">Resign</button>' : ''}`;
 	const r = $('g-resign');
@@ -940,6 +954,7 @@ document.addEventListener('click', async (e) => {
 	const r = await api(`/games/${G.id}/round/${b.dataset.replay}`);
 	modal(`<h3>${r.word ? esc(r.word) : 'A drawing'}</h3><div class="board-wrap modal-board" id="replay-wrap"></div><div class="row center"><button class="btn sm" id="rp-skip"><svg><use href="#i-ff"/></svg>Skip</button><button class="btn sm" id="rp-again"><svg><use href="#i-play"/></svg>Again</button><button class="btn sm" id="rp-save"><svg><use href="#i-save"/></svg>Save PNG</button></div>`);
 	const bd = new Board($('replay-wrap'));
+	bd.label(`Replay of ${r.word ? `the drawing of ${r.word}` : 'a drawing'}`);
 	let rp = new Replay(bd, r.ops);
 	$('rp-skip').onclick = () => rp.skip();
 	$('rp-again').onclick = () => { rp.stop(); rp = new Replay(bd, r.ops); };
@@ -951,7 +966,9 @@ async function startGuess(g) {
 	if (ui.replay) ui.replay.stop();
 	Object.assign(ui, { mode: 'guess', roundId: g.round.id, board: null, recorder: null, tilesKey: null });
 	const bd = gameBoard();
+	bd.label(`Drawing by ${g.round.drawer}`);
 	$('g-prompt').innerHTML = `<span>${pic(g.round.drawer_id, 'xs')}<b>${esc(g.round.drawer)}</b> drew you something</span>${tierTag(g.round.tier)}`;
+	announce(`${g.round.drawer} drew you something. Guess the ${g.round.pattern.reduce((a, b) => a + b, 0)} letter word.`);
 	renderTiles(g);
 	const r = await api(`/games/${g.id}/round/${g.round.id}`);
 	if (G.ui !== ui || ui.roundId !== r.id) return;
@@ -970,7 +987,7 @@ function renderTiles(g) {
 	ui.slots = Array.from({ length: n }, (_, i) => rd.revealed[i] !== undefined ? { letter: rd.revealed[i], fixed: true } : null);
 	ui.tiles = rd.tiles.map((t) => ({ letter: t, used: false }));
 	$('g-under').innerHTML = `<div class="replay-ctl hidden" id="rp-speed"><button class="btn sm" id="rp-fast"><svg><use href="#i-ff"/></svg>Faster</button><button class="btn sm" id="rp-skip2">Skip to the end</button></div>
-		<div class="slots" id="slots"></div><div class="misses" id="g-misses"></div><div class="tiles" id="tiles"></div>
+		<div class="slots" id="slots" role="group" aria-label="Your answer"></div><div class="misses" id="g-misses"></div><div class="tiles" id="tiles" role="group" aria-label="Letter tiles"></div>
 		<div class="hints">
 			<button class="btn sm" data-hint="reveal">Reveal a letter <span class="price">${cfg.hints.reveal}<span class="coin sm"></span></span></button>
 			<button class="btn sm" data-hint="decoys"${rd.decoys ? ' disabled' : ''}>Remove decoys <span class="price">${cfg.hints.decoys}<span class="coin sm"></span></span></button>
@@ -1002,9 +1019,9 @@ function drawTiles(rd) {
 	$('slots').style.setProperty('--n', ui.slots.length + rd.pattern.length - 1); // phones size the slots so the answer fits one line
 	$('slots').innerHTML = rd.pattern.map((len) => `<div class="slot-word">${Array.from({ length: len }, () => {
 		const s = ui.slots[i];
-		return `<button class="slot${s ? ' full' : ''}${s && s.fixed ? ' fixed' : ''}" data-slot="${i++}">${s ? s.letter : ''}</button>`;
+		return `<button class="slot${s ? ' full' : ''}${s && s.fixed ? ' fixed' : ''}" data-slot="${i}" aria-label="Slot ${++i}, ${s ? `letter ${esc(s.letter)}${s.fixed ? ', revealed' : ''}` : 'empty'}">${s ? s.letter : ''}</button>`;
 	}).join('')}</div>`).join('');
-	$('tiles').innerHTML = ui.tiles.map((t, j) => `<button class="tile${t.used ? ' used' : ''}" data-tile="${j}">${t.letter}</button>`).join('');
+	$('tiles').innerHTML = ui.tiles.map((t, j) => `<button class="tile${t.used ? ' used' : ''}" data-tile="${j}" aria-label="Letter ${esc(t.letter)}">${t.letter}</button>`).join('');
 	$('slots').onclick = (e) => {
 		const b = e.target.closest('[data-slot]');
 		if (!b) return;
@@ -1034,6 +1051,7 @@ async function submitGuess(rd) {
 	const res = await api(`/games/${G.id}/guess`, { guess });
 	if (res.correct) return showResult({ kind: 'correct', word: res.word, coins: res.coins, streak: res.streak }, res.game);
 	sfx('wrong');
+	announce(`${guess} is wrong`);
 	G.data = res.game;
 	renderMisses(res.game);
 	$('slots').classList.add('shake');
@@ -1057,6 +1075,7 @@ function showResult(res, game) {
 	$('g-under').innerHTML = `<div class="result">${head}${vote}<div class="row center"><button class="btn sm" id="res-save"><svg><use href="#i-save"/></svg>Save PNG</button><button class="btn primary" id="res-next">Your turn to draw →</button></div></div>`;
 	if (res.kind === 'correct') { confetti(); sfx('correct'); }
 	else sfx('reveal');
+	announce(`${res.kind === 'correct' ? 'Got it!' : res.kind === 'skipped' ? 'Skipped.' : 'Gave up.'} It was ${res.word}.`);
 	$('res-save').onclick = () => ui.board.save(res.word);
 	$('res-next').onclick = () => { ui.mode = null; renderGame(); };
 	renderHistory(game);
@@ -1066,8 +1085,9 @@ function showChoices(g, key) {
 	const ui = G.ui;
 	if (ui.replay) ui.replay.stop();
 	Object.assign(ui, { mode: 'choose', choicesKey: key, replay: null, board: null, recorder: null });
-	gameBoard();
+	gameBoard().label('Empty drawing board');
 	$('g-prompt').innerHTML = '<span>Pick a word to draw</span>';
+	announce(`Your turn to draw. Pick a word: ${g.choices.map((c) => c.word).join(', ')}`);
 	$('g-under').innerHTML = `<div class="choices">${g.choices.map((c, i) => `<button class="choice t${c.tier}" data-choice="${i}">${c.new ? '<span class="new-tag">new</span>' : ''}<b>${esc(c.word)}</b>${tierTag(c.tier)}</button>`).join('')}</div>
 		<div class="row center"><button class="btn sm" id="g-bomb" title="Swap all three for new words">💣 New words <span class="price">${cfg.bomb}<span class="coin sm"></span></span></button></div>`;
 	$('g-under').querySelectorAll('[data-choice]').forEach((b) => { b.onclick = () => startDraw(g, +b.dataset.choice); });
@@ -1095,6 +1115,7 @@ function startDraw(g, choice, draftOps) {
 	Object.assign(ui, { mode: 'draw', choice, ops: draftOps ? [...draftOps] : [] });
 	const bd = gameBoard();
 	bd.load(ui.ops);
+	bd.label(`Your drawing of ${pick.word}`);
 	const save = () => { try { sessionStorage.setItem('draft-' + g.id, JSON.stringify({ key: JSON.stringify(g.choices), choice, ops: ui.ops })); } catch (e) {} };
 	ui.recorder = new Recorder(bd, { packs: me.packs, onOp: (op) => { ui.ops.push(op); save(); } });
 	if (ui.ops.length) ui.recorder.resume(ui.ops[ui.ops.length - 1].t);
@@ -1128,6 +1149,8 @@ async function showWait(g, key) {
 	if (g.step === 'over') $('g-prompt').innerHTML = `<span>${esc(g.reason || 'This game is over')}</span>`;
 	else if (!g.opponent) $('g-prompt').innerHTML = `<span>Waiting for ${g.invite ? 'someone to open your link' : 'a random player to pick it up'}</span>`;
 	else $('g-prompt').innerHTML = `<span>Waiting for <b>${esc(g.opponent)}</b> to ${mine ? 'guess' : 'draw'}</span>`;
+	bd.label(mine ? `Your drawing of ${mine.word || 'your word'}` : 'Empty drawing board');
+	announce($('g-prompt').textContent);
 	const link = g.invite ? `${location.origin}/#/join/${g.invite}` : '';
 	$('g-under').innerHTML = `${link ? `<div class="invite"><input readonly value="${esc(link)}"><button class="btn sm" id="g-copy"><svg><use href="#i-link"/></svg>Copy</button></div>` : ''}
 		<div class="misses" id="g-misses"></div>
@@ -1250,11 +1273,11 @@ function roomUpdate(d) {
 	$('r-name').textContent = d.name;
 	$('r-round').textContent = d.state === 'lobby' ? `· code ${d.code}` : `· round ${Math.min(d.round, d.rounds)} of ${d.rounds}`;
 	$('r-chat-input').placeholder = d.state === 'drawing' && d.drawer !== d.me && !(d.players.find((p) => p.id === d.me) || {}).guessed ? 'Type your guess' : 'Chat';
-	$('r-players').innerHTML = [...d.players].sort((a, b) => b.score - a.score).map((p) => `<li class="${p.id === d.me ? 'me ' : ''}${p.guessed ? 'got ' : ''}${p.id === d.drawer ? 'drawing' : ''}">
+	$('r-players').innerHTML = [...d.players].sort((a, b) => b.score - a.score).map((p) => `<li class="${p.id === d.me ? 'me ' : ''}${p.guessed ? 'got ' : ''}${p.id === d.drawer ? 'drawing' : ''}" aria-label="${esc(p.name)}${p.id === d.me ? ' (you)' : ''}, ${p.score} points${p.host ? ', host' : ''}${p.id === d.drawer ? ', drawing' : p.guessed ? ', guessed it' : ''}">
 		${avatar(p.name, p.user_id, 'sm')}
 		<span class="pname">${esc(p.name)}${p.host ? ' <span title="Host">👑</span>' : ''}</span>
 		<span class="pscore">${p.score}</span>${p.id === d.drawer ? '<span class="ptag">✏️</span>' : p.guessed ? '<span class="ptag">✓</span>' : ''}
-		${d.host && p.id !== d.me ? `<button class="icon-btn sm kick" data-kick="${p.id}" title="Kick"><svg><use href="#i-x"/></svg></button>` : ''}</li>`).join('');
+		${d.host && p.id !== d.me ? `<button class="icon-btn sm kick" data-kick="${p.id}" title="Kick" aria-label="Kick ${esc(p.name)}"><svg><use href="#i-x"/></svg></button>` : ''}</li>`).join('');
 	const drawing = d.state === 'drawing' && d.drawer === d.me;
 	document.body.classList.toggle('r-drawer', drawing);
 	if (prev) roomSounds(prev, d);
@@ -1293,6 +1316,12 @@ function roomPrompt(d) {
 
 function roomStage(d, prev) {
 	roomPrompt(d);
+	const drawer = d.players.find((p) => p.id === d.drawer), dname = drawer ? drawer.name : 'someone';
+	R.board.label(d.state === 'drawing' ? (d.drawer === d.me ? `Your drawing of ${d.word}` : `Drawing by ${dname}`) : 'Drawing board');
+	if (d.state === 'choosing') announce(d.drawer === d.me ? `Your turn to draw. Pick a word: ${(d.choices || []).map((c) => c.word).join(', ')}` : `${dname} is picking a word`);
+	else if (d.state === 'drawing') announce(d.word ? `${d.drawer === d.me ? 'Draw' : 'You got it:'} ${d.word}` : `${dname} is drawing. Guess the ${d.mask.replace(/ /g, '').length} letter word`);
+	else if (d.state === 'reveal' && d.reveal) announce(`The word was ${d.reveal.word}`);
+	else if (d.state === 'done') { const won = (d.results || []).filter((r) => r.winner).map((r) => r.name); announce(won.length ? `Game over! ${won.join(' and ')} won` : 'Game over!'); }
 	const under = $('r-under');
 	if (R.recorder) { R.recorder.on = false; R.recorder = null; R.board.el.classList.remove('drawable'); }
 	if (d.state === 'lobby') {
@@ -1355,7 +1384,7 @@ function roomChat(msgs) {
 		log.insertAdjacentHTML('beforeend', `<div class="msg k-${m.kind}${m.name && m.name === myName ? ' me' : ''}">${line}</div>`);
 		if (!R.chatLoaded) continue; // history from before you joined stays quiet
 		const mine = m.name && m.name === myName;
-		if (m.kind === 'good') { sfx(mine ? 'correct' : 'other'); roomFlash(mine ? 'You got it!' : `${m.name} got it!`, m.text.replace(/^.*?(\+\d+)$/, '$1')); if (mine) confetti(); }
+		if (m.kind === 'good') { sfx(mine ? 'correct' : 'other'); announce(mine ? 'You got it!' : `${m.name} got it!`); roomFlash(mine ? 'You got it!' : `${m.name} got it!`, m.text.replace(/^.*?(\+\d+)$/, '$1')); if (mine) confetti(); }
 		else if (m.kind === 'miss') sfx(mine ? 'wrong' : 'pop');
 		else if (m.kind === 'close') sfx('close');
 		else if (!mine && m.kind !== 'system') sfx('pop');
