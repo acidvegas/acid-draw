@@ -19,6 +19,8 @@ RUN adduser -D -u 10001 app && mkdir -p /data && chown app:app /data
 
 EXPOSE 20010
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s CMD wget -qO- http://127.0.0.1:20010/healthz || exit 1
+
 USER app
 
 # Live rooms and captchas live in process memory, so run a single gevent worker
