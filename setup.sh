@@ -8,7 +8,7 @@ docker rm -f aciddraw 2>/dev/null || true
 ARCADE_ARGS=''
 if [ -n "$ARCADE_URL" ]; then
 	ARCADE_PUBLIC_URL=${ARCADE_PUBLIC_URL:-'https://arcade.{domain}'} # {domain} becomes the player's parent domain
-	ARCADE_ARGS="--network arcade -e ARCADE_URL -e ARCADE_PUBLIC_URL=$ARCADE_PUBLIC_URL -e ARCADE_GAME=draw"
+	ARCADE_ARGS="--network arcade -e ARCADE_URL -e ARCADE_PUBLIC_URL=$ARCADE_PUBLIC_URL -e ARCADE_GAME=draw -e ARCADE_KEY"
 fi
 docker run -d \
 	--name aciddraw \

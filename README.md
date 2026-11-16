@@ -92,6 +92,7 @@ With it set, signup, login and captchas go through acid-arcade-db, every request
 | `ARCADE_URL`        |                             | Internal URL of acid-arcade-db *(e.g. `http://acid-arcade-db:20021`)* |
 | `ARCADE_PUBLIC_URL` | `https://arcade.{domain}`   | Public arcade site, used for pictures and the account page. `{domain}` becomes the player's parent domain *(draw.supernets.org links to arcade.supernets.org)* |
 | `ARCADE_GAME`       | `draw`                      | This game's slug in acid-arcade-db                                    |
+| `ARCADE_KEY`        |                             | This game's key, needed when acid-arcade-db has `ARCADE_GAME_KEYS` set|
 
 `setup.sh` passes these and joins the `arcade` docker network when `ARCADE_URL` is set. Logins and signups send the player's address to acid-arcade-db for rate limiting, so set `DRAW_PROXIES=1` behind nginx.
 
