@@ -637,7 +637,7 @@ def live_create():
 			return api_error(f'you already have {live.IP_ROOMS_MAX} open rooms, finish or leave one first', 429)
 		code = hub.new_code()
 		room = live.Room(code, f'{name}\'s room', data.get('public') is not False, data.get('rounds') if data.get('rounds') in live.ROUND_CHOICE else 3, data.get('seconds') if data.get('seconds') in live.TIME_CHOICE else 80, data.get('size') if data.get('size') in live.SIZE_CHOICE else 8, request.remote_addr)
-		pid, error = room.join(user_id, name)
+		pid, error = room.join(user_id, name, request.remote_addr)
 		hub.ROOMS[code] = room
 	hub.notify()
 	return jsonify({'code': code, 'pid': pid})
@@ -663,7 +663,7 @@ def live_join():
 				del JOIN_FAILS[ip]
 			JOIN_FAILS[request.remote_addr] = fails + [now]
 			return api_error('no room with that code', 404)
-		pid, error = room.join(user_id, name)
+		pid, error = room.join(user_id, name, request.remote_addr)
 		if error:
 			return api_error(error)
 		hub.notify(room=room.code)

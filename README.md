@@ -67,7 +67,7 @@ This builds the `aciddraw` image and starts a container on port 20010 with the `
 | Variable          | Default     | What it does                                                                                                                             |
 |-------------------|-------------|------------------------------------------------------------------------------------------------------------------------------------------|
 | `DRAW_BIND`       | `127.0.0.1` | Address the port is published on                                                                                                         |
-| `DRAW_PROXIES`    | `0`         | Number of reverse proxies in front of the app. Set it to `1` behind nginx                                                                |
+| `DRAW_PROXIES`    | `0`         | Number of reverse proxies in front of the app. `setup.sh` sets `1`, since it publishes the port on 127.0.0.1 for nginx                     |
 | `DRAW_ADMINS`     |             | Comma separated usernames that can manage the word list                                                                                  |
 | `DRAW_PUBLIC_URL` |             | Main address for canonical links, share cards and the sitemap *(e.g. `https://draw.acid.vegas`)*. Unset uses the address of each request |
 
@@ -91,7 +91,7 @@ With it set, signup, login and captchas go through acid-arcade-db, every request
 |---------------------|-----------------------------|-----------------------------------------------------------------------|
 | `ARCADE_URL`        |                             | Internal URL of acid-arcade-db *(e.g. `http://acid-arcade-db:20021`)* |
 | `ARCADE_PUBLIC_URL` | `https://arcade.{domain}`   | Public arcade site, used for pictures and the account page. `{domain}` becomes the player's parent domain *(draw.supernets.org links to arcade.supernets.org)* |
-| `ARCADE_GAME`       | `draw`                      | This game's slug in acid-arcade-db                                    |
+| `ARCADE_GAME`       |                             | This game's slug in acid-arcade-db *(`setup.sh` sets it to `draw`)*   |
 | `ARCADE_KEY`        |                             | This game's key, needed when acid-arcade-db has `ARCADE_GAME_KEYS` set|
 
 `setup.sh` passes these and joins the `arcade` docker network when `ARCADE_URL` is set. Logins and signups send the player's address to acid-arcade-db for rate limiting, so set `DRAW_PROXIES=1` behind nginx.
@@ -99,7 +99,7 @@ With it set, signup, login and captchas go through acid-arcade-db, every request
 ## Tests
 
 ```bash
-.venv/bin/python tests/test_app.py
+.venv/bin/python -m unittest discover -s tests
 ```
 
 ## Code layout
@@ -114,6 +114,7 @@ With it set, signup, login and captchas go through acid-arcade-db, every request
 | `aciddraw/storage.py` | SQLite storage for users, games, words and leaderboards                 |
 | `aciddraw/hub.py`     | Room clock and event stream wake ups                                    |
 | `aciddraw/auth.py`    | Sessions and captcha                                                    |
+| `aciddraw/arcade.py`  | Client for acid-arcade-db *(only used when `ARCADE_URL` is set)*        |
 | `aciddraw/words/`     | `easy.txt`, `medium.txt`, `hard.txt` and `spicy.txt` *(tier prefixed)*  |
 | `aciddraw/static/`    | `utils.js`, `style.css`, `sw.js` *(notifications on Android)* and icons |
 

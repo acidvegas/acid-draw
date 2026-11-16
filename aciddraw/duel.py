@@ -54,6 +54,8 @@ def chat_post(user_id: int, game_id: int, text: str) -> str:
 	times = [t for t in CHAT_TIMES.get(user_id, []) if now - t < RATE_SPAN]
 	if len(times) >= RATE_MAX:
 		return 'slow down a little'
+	for uid in [uid for uid, t in CHAT_TIMES.items() if now - t[-1] >= RATE_SPAN]:
+		del CHAT_TIMES[uid]
 	CHAT_TIMES[user_id] = times + [now]
 	with DB_LOCK, db_connect() as c:
 		if not game_row(c, game_id, user_id):
@@ -179,7 +181,7 @@ def guess(user_id: int, game_id: int, text: str) -> dict:
 		coins  = r['tier']
 		streak = g['streak'] + 1
 		c.execute('UPDATE rounds SET result=\'guessed\', solved_at=?, attempts = attempts + 1 WHERE id=?', (now, r['id']))
-		c.execute('UPDATE games SET streak=?, best=MAX(best, ?), coins = coins + ?, updated_at=? WHERE id=?', (streak, streak, coins * 2, now, game_id))
+		c.execute('UPDATE games SET streak=?, best=MAX(best, ?), updated_at=? WHERE id=?', (streak, streak, now, game_id))
 		for uid in (r['drawer'], user_id):
 			add_capped_coins(c, uid, coins, 'duel')
 			c.execute('UPDATE users SET best_streak=MAX(best_streak, ?) WHERE id=?', (streak, uid))
@@ -376,7 +378,7 @@ def view(user_id: int, game_id: int) -> dict:
 			return None
 		other = g['b'] if g['a'] == user_id else g['a']
 		now   = step(c, g, user_id)
-		out   = {'id': g['id'], 'status': g['status'], 'step': now, 'opponent': username_of(c, other), 'opponent_id': other, 'streak': g['streak'], 'best': g['best'], 'coins': g['coins'], 'reason': g['reason'], 'expires_at': g['updated_at'] + EXPIRE_AFTER, 'invite': g['invite'] if g['status'] == 'open' else None, 'mine': g['a'] == user_id}
+		out   = {'id': g['id'], 'status': g['status'], 'step': now, 'opponent': username_of(c, other), 'opponent_id': other, 'streak': g['streak'], 'best': g['best'], 'reason': g['reason'], 'expires_at': g['updated_at'] + EXPIRE_AFTER, 'invite': g['invite'] if g['status'] == 'open' else None, 'mine': g['a'] == user_id}
 		if now == 'guess':
 			r = pending(c, game_id, user_id)
 			out['round'] = {'id': r['id'], 'tier': r['tier'], 'pattern': words.pattern(r['word']), 'attempts': r['attempts'], 'misses': json.loads(r['misses']), 'drawer': username_of(c, r['drawer']), 'drawer_id': r['drawer'], **tile_view(r)}

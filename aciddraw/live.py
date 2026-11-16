@@ -65,7 +65,9 @@ class Room:
 		self.messages    = collections.deque(maxlen=CHAT_KEEP)
 		self.next_msg    = 0
 		self.next_id     = 0
-		self.banned      = set()
+		self.banned      = set() # names kicked from the room
+		self.banned_ips  = set() # addresses of guests kicked from the room
+		self.banned_ids  = set() # user ids kicked from the room
 		self.empty_since = time.time()
 
 	def add_msg(self, text: str, kind: str = 'system', name: str = None, to: set = None):
@@ -154,14 +156,17 @@ class Room:
 
 		return not self.players and time.time() - self.empty_since > EMPTY_AFTER
 
-	def join(self, user_id: int, name: str) -> tuple:
-		'''Seat a player. A signed in player who is already here gets their seat back. Returns (pid, error).'''
+	def join(self, user_id: int, name: str, ip: str = None) -> tuple:
+		'''Seat a player. A signed in player who is already here gets their seat back. Returns (pid, error).
+
+		:param ip: the player's address, so a kicked guest can not come back under a new name
+		'''
 
 		for pid, p in self.players.items():
 			if user_id and p['user_id'] == user_id:
 				p['seen'] = time.time()
 				return pid, None
-		if name.lower() in self.banned:
+		if name.lower() in self.banned or user_id in self.banned_ids or (not user_id and ip in self.banned_ips):
 			return None, 'you were kicked from this room'
 		if any(p['name'].lower() == name.lower() for p in self.players.values()):
 			return None, 'someone in the room already has that name'
@@ -171,7 +176,7 @@ class Room:
 			packs = packs_of(c, user_id)
 		pid           = secrets.token_urlsafe(16)
 		self.next_id += 1
-		self.players[pid] = {'id': self.next_id, 'name': name, 'user_id': user_id, 'packs': packs, 'score': 0, 'gain': 0, 'guessed': False, 'seen': time.time(), 'times': []}
+		self.players[pid] = {'id': self.next_id, 'name': name, 'user_id': user_id, 'packs': packs, 'score': 0, 'gain': 0, 'guessed': False, 'seen': time.time(), 'times': [], 'ip': ip}
 		self.order.append(pid)
 		self.host        = self.host or pid
 		self.empty_since = None
@@ -186,7 +191,12 @@ class Room:
 		victim = next((k for k, p in self.players.items() if p['id'] == target), None)
 		if not victim or victim == pid:
 			return 'no such player'
-		self.banned.add(self.players[victim]['name'].lower())
+		p = self.players[victim]
+		self.banned.add(p['name'].lower())
+		if p['user_id']:
+			self.banned_ids.add(p['user_id'])
+		elif p['ip']:
+			self.banned_ips.add(p['ip'])
 		self.remove(victim, 'was kicked')
 
 	def listing(self) -> dict:

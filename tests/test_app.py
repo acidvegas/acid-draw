@@ -104,6 +104,33 @@ class TestApp(unittest.TestCase):
 		self.assertEqual(self.client.get('/auth/captcha', environ_base=ip).status_code, 429)
 		self.assertEqual(self.client.get('/auth/captcha', environ_base={'REMOTE_ADDR': '10.9.0.2'}).status_code, 200)
 
+	def test_chat_prune(self):
+		'''A duel chat post drops users whose newest post is older than the rate span.'''
+
+		duel = draw_app.duel
+		self.addCleanup(duel.CHAT_TIMES.clear)
+		duel.CHAT_TIMES[9998] = [time.time() - duel.RATE_SPAN - 1]
+		duel.CHAT_TIMES[9999] = [time.time()]
+		duel.chat_post(1, 0, 'hello')
+		self.assertNotIn(9998, duel.CHAT_TIMES)
+		self.assertIn(9999, duel.CHAT_TIMES)
+		self.assertIn(1, duel.CHAT_TIMES)
+
+	def test_choose_empty(self):
+		'''Choosing words does not crash when no tier has an approved word.'''
+
+		c = storage.db_connect()
+		self.addCleanup(c.close)
+		self.addCleanup(c.rollback)
+		c.execute('UPDATE words SET status=\'banned\' WHERE status=\'approved\'')
+		c.execute('INSERT INTO words(text, tier, source, status, created_at) VALUES(\'lonely word\', 2, \'community\', \'pending\', 0)')
+		with unittest.mock.patch.object(words.random, 'random', return_value=0):
+			picks = words.choose(c)
+		self.assertEqual(len(picks), 1)
+		self.assertTrue(picks[0]['new'])
+		with unittest.mock.patch.object(words.random, 'random', return_value=1):
+			self.assertEqual(words.choose(c), [])
+
 	def test_hints_and_pass(self):
 		'''Hints cost coins, decoys can be removed once, and passing resets the streak.'''
 
@@ -189,6 +216,22 @@ class TestApp(unittest.TestCase):
 		for r in open_ + [other]:
 			r.close()
 		self.assertFalse(any(info['ip'] in ('10.2.0.1', '10.2.0.2') for info in hub.SUBS.values()))
+
+	def test_kick_bans(self):
+		'''A kicked guest can not come back from the same address under a new name, and a kicked player can not come back under any name.'''
+
+		with storage.db_connect() as c:
+			alice = c.execute('SELECT id FROM users WHERE username=\'alice\'').fetchone()[0]
+		room      = live.Room('KICK', 'kick room', False, 1, 80, 8)
+		host, _   = room.join(None, 'hosty', '10.3.0.1')
+		guest, _  = room.join(None, 'kicky', '10.3.0.2')
+		player, _ = room.join(alice, 'alice', '10.3.0.3')
+		for pid in (guest, player):
+			self.assertIsNone(room.kick(host, room.players[pid]['id']))
+		self.assertEqual(room.join(None, 'kicky2', '10.3.0.2')[1], 'you were kicked from this room')
+		self.assertEqual(room.join(alice, 'alice2', '10.3.0.4')[1], 'you were kicked from this room')
+		self.assertIsNone(room.join(None, 'other', '10.3.0.3')[1]) # only the guest's address is banned
+		self.assertIsNone(room.join(None, 'nobody')[1])
 
 	def test_login_limits(self):
 		'''After 10 failed logins an account is refused even with the right password, other accounts are not.'''

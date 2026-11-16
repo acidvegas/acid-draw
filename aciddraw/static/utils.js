@@ -1252,7 +1252,7 @@ function roomUpdate(d) {
 	$('r-chat-input').placeholder = d.state === 'drawing' && d.drawer !== d.me && !(d.players.find((p) => p.id === d.me) || {}).guessed ? 'Type your guess' : 'Chat';
 	$('r-players').innerHTML = [...d.players].sort((a, b) => b.score - a.score).map((p) => `<li class="${p.id === d.me ? 'me ' : ''}${p.guessed ? 'got ' : ''}${p.id === d.drawer ? 'drawing' : ''}">
 		${avatar(p.name, p.user_id, 'sm')}
-		<span class="pname">${esc(p.name)}${p.host ? ' <span title="Host">👑</span>' : ''}${p.guest ? '' : ''}</span>
+		<span class="pname">${esc(p.name)}${p.host ? ' <span title="Host">👑</span>' : ''}</span>
 		<span class="pscore">${p.score}</span>${p.id === d.drawer ? '<span class="ptag">✏️</span>' : p.guessed ? '<span class="ptag">✓</span>' : ''}
 		${d.host && p.id !== d.me ? `<button class="icon-btn sm kick" data-kick="${p.id}" title="Kick"><svg><use href="#i-x"/></svg></button>` : ''}</li>`).join('');
 	const drawing = d.state === 'drawing' && d.drawer === d.me;

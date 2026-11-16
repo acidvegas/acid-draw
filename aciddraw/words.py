@@ -112,7 +112,10 @@ def choose(c: sqlite3.Connection, drawer: int = None, exclude: set = ()) -> list
 		if row and row['id'] not in exclude:
 			slot        = next((i for i, p in enumerate(picks) if p['tier'] == row['tier']), None)
 			new         = {'id': row['id'], 'word': row['text'], 'tier': row['tier'], 'new': True}
-			picks[slot if slot is not None else len(picks) - 1] = new
+			if picks:
+				picks[slot if slot is not None else len(picks) - 1] = new
+			else:
+				picks.append(new)
 	return picks
 
 

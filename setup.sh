@@ -15,7 +15,7 @@ docker run -d \
 	--name aciddraw \
 	--restart unless-stopped \
 	-p ${DRAW_BIND:-127.0.0.1}:20010:20010 \
-	-e DRAW_PROXIES=${DRAW_PROXIES:-0} \
+	-e DRAW_PROXIES=${DRAW_PROXIES:-1} \
 	-e DRAW_ADMINS=${DRAW_ADMINS:-} \
 	${DRAW_PUBLIC_URL:+-e DRAW_PUBLIC_URL} \
 	-v aciddraw_data:/data \
