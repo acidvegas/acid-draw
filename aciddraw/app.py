@@ -24,6 +24,7 @@ from storage import BOARDS, DB_LOCK, START_COINS, db_connect, init_db, leaderboa
 
 
 app = Flask(__name__)
+app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024 # the biggest drawing is about 1.2 MB of JSON
 
 CACHE_VERSION = int(time.time())
 PROXIES       = int(os.environ.get('DRAW_PROXIES', '0')) # reverse proxies in front of the app, so the real client IP is used
