@@ -19,7 +19,7 @@ import duel
 import hub
 import live
 import words
-from auth import ARCADE_ADMINS, USERNAME_RE, arcade_account, arcade_mirror, arcade_poll, arcade_presence, captcha_create, captcha_verify, create_session, delete_session, request_token, request_user, token_user
+from auth import ARCADE_ADMINS, USERNAME_RE, arcade_account, arcade_mirror, arcade_poll, arcade_presence, attempt, blocked, captcha_create, captcha_verify, create_session, delete_session, request_token, request_user, token_user
 from storage import BOARDS, DB_LOCK, START_COINS, db_connect, init_db, leaderboard, packs_of, profile, prune_sessions, signup_allowed, spend
 
 
@@ -234,6 +234,9 @@ def auth_captcha():
 
 	if arcade.enabled():
 		return jsonify(arcade.captcha())
+	if blocked('captcha', request.remote_addr):
+		return api_error('too many captchas, wait a minute', 429)
+	attempt('captcha', request.remote_addr)
 	return jsonify(captcha_create())
 
 
@@ -248,9 +251,14 @@ def auth_login():
 		except arcade.ArcadeError as e:
 			return api_error(str(e), e.status)
 		return arcade_reply(res)
+	name = (data.get('username') or '').lower()
+	if blocked('account', name) or blocked('ip', request.remote_addr):
+		return api_error('too many failed logins, try again in 15 minutes', 429)
 	with db_connect() as c:
 		row = c.execute('SELECT id, username, password_hash FROM users WHERE username=?', (data.get('username') or '',)).fetchone()
 	if not row or not check_password_hash(row['password_hash'], data.get('password') or ''):
+		attempt('account', name)
+		attempt('ip', request.remote_addr)
 		return api_error('wrong username or password', 401)
 	return jsonify({'token': create_session(row['id']), 'username': row['username']})
 

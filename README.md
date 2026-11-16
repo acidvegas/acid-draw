@@ -42,6 +42,7 @@ Draw a word, someone else guesses it. Turn based 1v1 games and live rooms in the
 ### Accounts
 
 - Optional *(username, password and a captcha)*. Every new account starts with 50 coins
+- Captchas are drawn as paths, not text. Logins lock for 15 minutes after 10 failures per account or 30 per address, captchas are limited to 30 a minute per address
 - Leaderboards for coins earned, best streak, live wins and best drawer *(how often your drawings get guessed, after at least 10)*
 - Live updates over Server-Sent Events
 

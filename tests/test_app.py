@@ -87,6 +87,23 @@ class TestApp(unittest.TestCase):
 		_, me = self.call('bob', '/auth/me')
 		self.assertEqual(me['user']['coins'], 53)
 
+	def test_captcha(self):
+		'''Captchas are drawn as paths with no text, the store is capped, and each address gets 30 a minute.'''
+
+		svg = auth.captcha_render_svg('ABCDEFGHJKLMNPQRSTUVWXYZ23456789')
+		self.assertNotIn('<text', svg)
+		self.assertIn('<path', svg)
+		with unittest.mock.patch.object(auth, 'CAPTCHA_MAX', 3):
+			ids = [auth.captcha_create()['captcha_id'] for _ in range(5)]
+			self.assertLessEqual(len(auth.CAPTCHAS), 3)
+			self.assertIn(ids[-1], auth.CAPTCHAS)
+			self.assertNotIn(ids[0], auth.CAPTCHAS)
+		ip = {'REMOTE_ADDR': '10.9.0.1'}
+		for _ in range(30):
+			self.assertEqual(self.client.get('/auth/captcha', environ_base=ip).status_code, 200)
+		self.assertEqual(self.client.get('/auth/captcha', environ_base=ip).status_code, 429)
+		self.assertEqual(self.client.get('/auth/captcha', environ_base={'REMOTE_ADDR': '10.9.0.2'}).status_code, 200)
+
 	def test_hints_and_pass(self):
 		'''Hints cost coins, decoys can be removed once, and passing resets the streak.'''
 
@@ -172,6 +189,19 @@ class TestApp(unittest.TestCase):
 		for r in open_ + [other]:
 			r.close()
 		self.assertFalse(any(info['ip'] in ('10.2.0.1', '10.2.0.2') for info in hub.SUBS.values()))
+
+	def test_login_limits(self):
+		'''After 10 failed logins an account is refused even with the right password, other accounts are not.'''
+
+		self.addCleanup(auth.ATTEMPTS.clear)
+		ip = {'REMOTE_ADDR': '10.9.1.1'}
+		for _ in range(10):
+			self.assertEqual(self.client.post('/auth/login', json={'username': 'carol', 'password': 'wrongpass1'}, environ_base=ip).status_code, 401)
+		res = self.client.post('/auth/login', json={'username': 'carol', 'password': 'password123'}, environ_base=ip)
+		self.assertEqual(res.status_code, 429)
+		self.assertIn('error', res.get_json())
+		self.assertEqual(self.client.post('/auth/login', json={'username': 'CAROL', 'password': 'password123'}, environ_base={'REMOTE_ADDR': '10.9.1.2'}).status_code, 429)
+		self.assertEqual(self.client.post('/auth/login', json={'username': 'alice', 'password': 'password123'}, environ_base=ip).status_code, 200)
 
 	def test_live_room(self):
 		'''A guest and a player share a room: the word stays hidden from the guesser until they type it.'''
