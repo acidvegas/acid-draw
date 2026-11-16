@@ -12,7 +12,7 @@ import time
 
 import canvas
 import words
-from storage import DB_LOCK, add_capped_coins, arcade_event, arcade_push, db_connect, dumps, packs_of, spend, stat, username_of
+from storage import DB_LOCK, add_capped_coins, arcade_activity, arcade_event, arcade_push, db_connect, dumps, packs_of, spend, stat, username_of
 
 
 EXPIRE_AFTER = 3 * 86400 # seconds without a move before a game ends and its streak is lost
@@ -109,8 +109,11 @@ def create(user_id: int, mode: str, opponent: str = None) -> tuple:
 	return None, 'pick how to find an opponent'
 
 
-def draw(user_id: int, game_id: int, choice: int, ops: list) -> str:
-	'''Send a drawing of one of the three choices to the opponent. Returns an error or None.'''
+def draw(user_id: int, game_id: int, choice: int, ops: list, ip: str = None) -> str:
+	'''Send a drawing of one of the three choices to the opponent. Returns an error or None.
+
+	:param ip: the drawer's address, kept with the drawing for acid-arcade-db when it gets guessed
+	'''
 
 	with DB_LOCK, db_connect() as c:
 		g = game_row(c, game_id, user_id)
@@ -129,7 +132,7 @@ def draw(user_id: int, game_id: int, choice: int, ops: list) -> str:
 		pick    = choices[choice]
 		other   = g['b'] if g['a'] == user_id else g['a']
 		now     = int(time.time())
-		c.execute('INSERT INTO rounds(game_id, drawer, guesser, word_id, word, tier, ops, tiles, created_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)', (game_id, user_id, other, pick['id'], pick['word'], pick['tier'], dumps(ops), words.tiles(pick['word']), now))
+		c.execute('INSERT INTO rounds(game_id, drawer, guesser, word_id, word, tier, ops, tiles, created_at, drawer_ip) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', (game_id, user_id, other, pick['id'], pick['word'], pick['tier'], dumps(ops), words.tiles(pick['word']), now, ip))
 		c.execute('UPDATE games SET turn=?, choices=NULL, updated_at=? WHERE id=?', (other, now, game_id))
 		words.played(c, pick['id'], [user_id])
 
@@ -161,8 +164,11 @@ def game_row(c: sqlite3.Connection, game_id: int, user_id: int) -> sqlite3.Row:
 	return c.execute('SELECT * FROM games WHERE id=? AND (a=? OR b=?)', (game_id, user_id, user_id)).fetchone()
 
 
-def guess(user_id: int, game_id: int, text: str) -> dict:
-	'''Guess the word of the drawing waiting for this player. Returns {'correct': bool, ...} or {'error': ...}.'''
+def guess(user_id: int, game_id: int, text: str, ip: str = None) -> dict:
+	'''Guess the word of the drawing waiting for this player. Returns {'correct': bool, ...} or {'error': ...}.
+
+	:param ip: the guesser's address, for acid-arcade-db
+	'''
 
 	now = time.time()
 	if now - GUESS_TIMES.get(user_id, 0) < GUESS_EVERY:
@@ -192,6 +198,9 @@ def guess(user_id: int, game_id: int, text: str) -> dict:
 			arcade_push(c, uid)
 			if streak in STREAK_FEED:
 				arcade_event(uid, 'streak', f'is on a {streak} guess streak')
+		arcade_activity(user_id, 'guess', f'duel-{r["id"]}-{user_id}', ip, {'live': False})
+		if r['drawer_ip']: # drawings sent before addresses were kept are not reported
+			arcade_activity(r['drawer'], 'drawn', f'duel-{r["id"]}-{user_id}', r['drawer_ip'], {'live': False})
 		return {'correct': True, 'word': r['word'], 'coins': coins, 'streak': streak}
 
 

@@ -671,17 +671,28 @@ function openAccount(tab) {
 	}).join('');
 	modal(`<h2>${pic(me.id, 'sm')}${esc(me.username)}</h2>
 		<div class="wallet"><span class="coin lg"></span><b>${me.coins.toLocaleString()}</b> coins</div>
-		<div class="tabs" id="acct-tabs" role="group" aria-label="Account"><button data-tab="stats" class="${tab !== 'shop' ? 'on' : ''}">Stats</button><button data-tab="shop" class="${tab === 'shop' ? 'on' : ''}">Color packs</button></div>
-		<div id="acct-stats" class="${tab === 'shop' ? 'hidden' : ''}"><div class="stats">${stats.map(([k, v]) => `<div><b>${v}</b><span>${k}</span></div>`).join('')}</div>
+		<div class="tabs" id="acct-tabs" role="group" aria-label="Account"><button data-tab="stats" class="${tab !== 'shop' ? 'on' : ''}">Stats</button><button data-tab="shop" class="${tab === 'shop' ? 'on' : ''}">Color packs</button>${cfg.exchange ? `<button data-tab="chips" class="${tab === 'chips' ? 'on' : ''}">Casino chips</button>` : ''}</div>
+		<div id="acct-stats" class="${tab === 'shop' || tab === 'chips' ? 'hidden' : ''}"><div class="stats">${stats.map(([k, v]) => `<div><b>${v}</b><span>${k}</span></div>`).join('')}</div>
 			<p class="dim small">Coins come from words guessed: easy 1, medium 2, hard 3, paid to both the drawer and the guesser. Spend them on color packs, hints and bombs.</p>
 			${cfg.arcade_public_url ? `<a class="btn" href="${esc(cfg.arcade_public_url)}/account" target="_blank" rel="noopener">Account settings</a> ` : ''}<button class="btn" id="btn-logout">Sign out</button></div>
-		<div id="acct-shop" class="${tab === 'shop' ? '' : 'hidden'}"><div class="packs">${packs}</div></div>`);
+		<div id="acct-shop" class="${tab === 'shop' ? '' : 'hidden'}"><div class="packs">${packs}</div></div>
+		${cfg.exchange ? `<div id="acct-chips" class="${tab === 'chips' ? '' : 'hidden'}"><p class="dim small">Exchange coins for chips at the arcade casino: 1 coin = $${cfg.exchange.rate} in chips, up to ${cfg.exchange.max} coins a day. Chips arrive in the casino within a minute, or once your account is a day old.</p>
+			<form id="chips-form" class="row"><input id="chips-coins" type="number" min="1" max="${cfg.exchange.max}" value="${Math.max(1, Math.min(cfg.exchange.max, me.coins))}" aria-label="Coins to exchange" required><button class="btn primary" type="submit">Exchange</button></form></div>` : ''}`);
 	$('acct-tabs').onclick = (e) => {
 		const t = e.target.dataset.tab;
 		if (!t) return;
 		$('acct-tabs').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
 		$('acct-stats').classList.toggle('hidden', t !== 'stats');
 		$('acct-shop').classList.toggle('hidden', t !== 'shop');
+		if ($('acct-chips')) $('acct-chips').classList.toggle('hidden', t !== 'chips');
+	};
+	if ($('chips-form')) $('chips-form').onsubmit = async (e) => {
+		e.preventDefault();
+		const res = await api('/shop/exchange', { coins: parseInt($('chips-coins').value, 10) });
+		me = Object.assign(me, res.me);
+		updateUser();
+		toast(`${res.taken ? `${res.taken} coins exchanged for $${res.chips.toLocaleString()} in casino chips` : 'No coins taken'}${res.reason ? ` (${res.reason})` : ''}`);
+		openAccount('chips');
 	};
 	$('acct-shop').onclick = async (e) => {
 		const k = e.target.closest('[data-buy]');

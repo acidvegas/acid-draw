@@ -45,6 +45,21 @@ def add_capped_coins(c: sqlite3.Connection, user_id: int, amount: int, kind: str
 		c.execute('INSERT INTO daily_coins(user_id, day, kind, coins) VALUES(?, ?, ?, ?) ON CONFLICT(user_id, day, kind) DO UPDATE SET coins = coins + ?', (user_id, day, kind, give, give))
 
 
+def arcade_activity(user_id: int, kind: str, ref: str, ip: str, data: dict):
+	'''Report a guess or a guessed drawing to acid-arcade-db for its daily missions off the request path. Guests and standalone mode send nothing.'''
+
+	if not user_id or not arcade.enabled():
+		return
+
+	def send():
+		try:
+			arcade.activity(user_id, kind, ref, ip, data)
+		except Exception as e:
+			print(f'arcade activity error for user {user_id}: {e!r}')
+
+	threading.Thread(target=send, daemon=True).start()
+
+
 def arcade_event(user_id: int, kind: str, text: str):
 	'''Add a line to the arcade activity feed off the request path. Guests and standalone mode send nothing.'''
 
@@ -194,11 +209,14 @@ def init_db():
 			attempts   INTEGER NOT NULL DEFAULT 0,
 			misses     TEXT NOT NULL DEFAULT '[]',
 			created_at INTEGER NOT NULL,
-			solved_at  INTEGER
+			solved_at  INTEGER,
+			drawer_ip  TEXT
 		)''')
 		c.execute('CREATE INDEX IF NOT EXISTS rounds_game ON rounds(game_id, id)')
 		if 'misses' not in {r[1] for r in c.execute('PRAGMA table_info(rounds)')}: # databases made before wrong guesses were kept
 			c.execute('ALTER TABLE rounds ADD COLUMN misses TEXT NOT NULL DEFAULT \'[]\'')
+		if 'drawer_ip' not in {r[1] for r in c.execute('PRAGMA table_info(rounds)')}: # databases made before guessed drawings were reported to acid-arcade-db
+			c.execute('ALTER TABLE rounds ADD COLUMN drawer_ip TEXT')
 		c.execute('''CREATE TABLE IF NOT EXISTS game_chat (
 			id      INTEGER PRIMARY KEY AUTOINCREMENT,
 			game_id INTEGER NOT NULL,

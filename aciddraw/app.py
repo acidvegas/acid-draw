@@ -8,6 +8,7 @@ import os
 import queue
 import threading
 import time
+import uuid
 
 from flask import Flask, Response, jsonify, render_template, request, send_from_directory
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -35,6 +36,8 @@ DB_EVERY      = 15   # seconds between refreshing database backed parts of an id
 IP_STREAMS    = 20   # event streams one IP address can have open at once
 JOIN_FAILS    = {}   # IP address -> times of recent joins with a wrong room code
 JOIN_FAIL_MAX = 10   # wrong room codes one IP address may try per minute, so private rooms can not be found by guessing
+EXCHANGE_MAX  = 150  # coins an account can trade for casino chips per UTC day, enforced by acid-arcade-db
+EXCHANGE_RATE = 10   # casino dollars per coin, worked out by acid-arcade-db
 
 if PROXIES:
 	app.wsgi_app = ProxyFix(app.wsgi_app, x_for=PROXIES, x_proto=PROXIES, x_host=PROXIES)
@@ -295,6 +298,7 @@ def auth_me():
 		'start'  : START_COINS,
 		'live'   : {'rounds': live.ROUND_CHOICE, 'seconds': live.TIME_CHOICE, 'sizes': list(live.SIZE_CHOICE)},
 		'letters': words.LETTERS_RANGE,
+		'exchange': {'rate': EXCHANGE_RATE, 'max': EXCHANGE_MAX} if arcade.enabled() else None,
 		'arcade_public_url': arcade.public_url(request.host) if arcade.enabled() else None
 	})
 	if arcade.enabled() and user_id and not request.cookies.get(arcade.COOKIE):
@@ -482,7 +486,7 @@ def game_draw(user_id: int, _: str, game_id: int):
 	'''Send a drawing.'''
 
 	data = payload()
-	return game_reply(game_id, user_id, duel.draw(user_id, game_id, data.get('choice'), data.get('ops')))
+	return game_reply(game_id, user_id, duel.draw(user_id, game_id, data.get('choice'), data.get('ops'), request.remote_addr))
 
 
 @app.route('/games/<int:game_id>/guess', methods=['POST'])
@@ -490,7 +494,7 @@ def game_draw(user_id: int, _: str, game_id: int):
 def game_guess(user_id: int, _: str, game_id: int):
 	'''Guess the word of a drawing.'''
 
-	result = duel.guess(user_id, game_id, payload().get('guess'))
+	result = duel.guess(user_id, game_id, payload().get('guess'), request.remote_addr)
 	return game_reply(game_id, user_id, result.pop('error', None), result)
 
 
@@ -708,6 +712,33 @@ def shop_buy(user_id: int, username: str):
 					p['packs'] = owned + [key]
 	hub.notify(users={user_id})
 	return jsonify(me_view(user_id, username))
+
+
+@app.route('/shop/exchange', methods=['POST'])
+@login_required
+def shop_exchange(user_id: int, username: str):
+	'''Trade coins for casino chips in arcade mode. The coins are held while acid-arcade-db decides how many it pays for, and the rest are given back.'''
+
+	if not arcade.enabled():
+		return api_error('casino chips need the arcade', 404)
+	coins = payload().get('coins')
+	if type(coins) is not int or not 1 <= coins <= EXCHANGE_MAX:
+		return api_error(f'exchange 1 to {EXCHANGE_MAX} coins')
+	with DB_LOCK, db_connect() as c:
+		if not spend(c, user_id, coins):
+			return api_error('you do not have that many coins')
+	try:
+		res   = arcade.activity(user_id, 'exchange', uuid.uuid4().hex, request.remote_addr, {'coins': coins})
+		taken = min(coins, max(0, res['granted']) // (EXCHANGE_RATE * 100)) # whole coins only, any cents left over are not charged for
+	except (arcade.ArcadeDown, arcade.ArcadeError) as e:
+		print(f'arcade exchange error for user {user_id}: {e!r}')
+		res, taken = None, 0
+	with DB_LOCK, db_connect() as c:
+		c.execute('UPDATE users SET coins = coins + ? WHERE id=?', (coins - taken, user_id))
+	hub.notify(users={user_id})
+	if res is None:
+		return api_error('casino chips are not available right now, your coins were not taken', 503)
+	return jsonify({'taken': taken, 'chips': taken * EXCHANGE_RATE, 'reason': res.get('reason'), 'me': me_view(user_id, username)})
 
 
 @app.route('/sw.js')

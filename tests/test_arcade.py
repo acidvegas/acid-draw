@@ -62,7 +62,8 @@ class TestArcade(unittest.TestCase):
 			unittest.mock.patch.object(arcade, 'enabled', return_value=True),
 			unittest.mock.patch.object(arcade, 'ARCADE_PUBLIC', 'https://arcade.{domain}'),
 			unittest.mock.patch.object(arcade, 'session', side_effect=lambda t: SESSIONS.get(t)),
-			unittest.mock.patch.object(arcade, 'user', side_effect=lambda n: next(({'user_id': i, 'username': k} for k, i in ACCOUNTS.items() if k.lower() == n.lower()), None))
+			unittest.mock.patch.object(arcade, 'user', side_effect=lambda n: next(({'user_id': i, 'username': k} for k, i in ACCOUNTS.items() if k.lower() == n.lower()), None)),
+			unittest.mock.patch.object(arcade, 'activity', return_value={'granted': 0, 'reason': None, 'dup': False})
 		]
 		for p in self.patches:
 			p.start()
@@ -233,6 +234,77 @@ class TestArcade(unittest.TestCase):
 			self.assertIsNone(c.execute('SELECT 1 FROM rounds WHERE game_id=?', (gid,)).fetchone())
 			self.assertIsNone(c.execute('SELECT 1 FROM game_chat WHERE game_id=?', (gid,)).fetchone())
 			self.assertIsNone(c.execute('SELECT 1 FROM plays WHERE user_id=9002').fetchone())
+
+	def test_activity_duel(self):
+		'''A correct 1v1 guess reports guess for the guesser and drawn for the drawer, each with their own address, and a wrong guess reports nothing.'''
+
+		self.call('tok-admin', '/auth/me')
+		_, g    = self.call('tok-boss', '/games/new', {'mode': 'user', 'opponent': 'admin'})
+		gid     = g['id']
+		_, view = self.call('tok-boss', f'/games/{gid}')
+		self.client.post(f'/games/{gid}/draw', json={'choice': 0, 'ops': STROKE}, headers={'X-Auth-Token': 'tok-boss'}, environ_base={'REMOTE_ADDR': '10.0.0.1'})
+		with unittest.mock.patch.object(storage.threading, 'Thread', SyncThread), unittest.mock.patch.object(arcade, 'push_stats'):
+			self.client.post(f'/games/{gid}/guess', json={'guess': 'zzzzzz'}, headers={'X-Auth-Token': 'tok-admin'}, environ_base={'REMOTE_ADDR': '10.0.0.2'})
+			arcade.activity.assert_not_called()
+			res = self.client.post(f'/games/{gid}/guess', json={'guess': view['choices'][0]['word']}, headers={'X-Auth-Token': 'tok-admin'}, environ_base={'REMOTE_ADDR': '10.0.0.2'}).get_json()
+		self.assertTrue(res['correct'])
+		with storage.db_connect() as c:
+			rid = c.execute('SELECT id FROM rounds WHERE game_id=?', (gid,)).fetchone()[0]
+		self.assertEqual(arcade.activity.call_args_list, [unittest.mock.call(9004, 'guess', f'duel-{rid}-9004', '10.0.0.2', {'live': False}), unittest.mock.call(9003, 'drawn', f'duel-{rid}-9004', '10.0.0.1', {'live': False})])
+
+	def test_activity_live(self):
+		'''A correct live guess between two accounts on a real drawing reports guess and drawn, a guest's guess or an empty canvas reports nothing.'''
+
+		room = draw_app.live.Room('ACTV', 'activity room', False, 1, 80, 8)
+		ava, _   = room.join(9005, 'ava', '10.0.0.5')
+		ben, _   = room.join(9006, 'ben', '10.0.0.6')
+		guest, _ = room.join(None, 'guestie', '10.0.0.7')
+		room.drawer  = ava
+		room.choices = words.choose(storage.db_connect())
+		room.state   = 'choosing'
+		room.begin_draw(0)
+		with unittest.mock.patch.object(storage.threading, 'Thread', SyncThread), unittest.mock.patch.object(arcade, 'push_stats'):
+			room.say(ben, room.word['word'])
+			arcade.activity.assert_not_called() # nothing drawn yet
+			room.players[ben]['guessed'] = False
+			room.ops = STROKE
+			room.say(guest, room.word['word'])
+			arcade.activity.assert_not_called()
+			room.players[ben]['times'] = []
+			room.say(ben, room.word['word'])
+		turn = f'live-ACTV-{int(room.started * 1000)}-9006'
+		self.assertEqual(arcade.activity.call_args_list, [unittest.mock.call(9006, 'guess', turn, '10.0.0.6', {'live': True}), unittest.mock.call(9005, 'drawn', turn, '10.0.0.5', {'live': True})])
+
+	def test_exchange(self):
+		'''The exchange takes only the whole coins acid-arcade-db paid for, gives the rest back, refunds everything when it is down and checks its input.'''
+
+		self.call('tok-zed', '/auth/me')
+		with storage.db_connect() as c:
+			c.execute('UPDATE users SET coins=200 WHERE id=9001')
+		with unittest.mock.patch.object(arcade, 'activity', return_value={'granted': 30_500, 'reason': 'daily limit', 'dup': False}) as activity:
+			st, res = self.call('tok-zed', '/shop/exchange', {'coins': 50})
+		self.assertEqual((st, res['taken'], res['chips'], res['reason'], res['me']['coins']), (200, 30, 300, 'daily limit', 170))
+		uid, kind, ref, ip, data = activity.call_args.args
+		self.assertEqual((uid, kind, len(ref), ip, data), (9001, 'exchange', 32, '127.0.0.1', {'coins': 50}))
+		with unittest.mock.patch.object(arcade, 'activity', return_value={'granted': 999_999, 'reason': None, 'dup': False}):
+			self.assertEqual(self.call('tok-zed', '/shop/exchange', {'coins': 10})[1]['me']['coins'], 160) # never more than asked for
+		for error in (arcade.ArcadeDown('refused'), arcade.ArcadeError('bad', 400)):
+			with unittest.mock.patch.object(arcade, 'activity', side_effect=error), unittest.mock.patch('builtins.print'):
+				st, res = self.call('tok-zed', '/shop/exchange', {'coins': 20})
+			self.assertEqual((st, res['error']), (503, 'casino chips are not available right now, your coins were not taken'))
+		with storage.db_connect() as c:
+			self.assertEqual(c.execute('SELECT coins FROM users WHERE id=9001').fetchone()[0], 160)
+			c.execute('UPDATE users SET coins=100 WHERE id=9001')
+		with unittest.mock.patch.object(arcade, 'activity') as activity:
+			for coins in (0, 151, True, '5', 1.5, None):
+				self.assertEqual(self.call('tok-zed', '/shop/exchange', {'coins': coins})[0], 400)
+			self.assertEqual(self.call('tok-zed', '/shop/exchange', {'coins': 150})[1]['error'], 'you do not have that many coins')
+			self.assertEqual(self.call(None, '/shop/exchange', {'coins': 5})[0], 401)
+			with unittest.mock.patch.object(arcade, 'enabled', return_value=False), draw_app.app.test_request_context(json={'coins': 5}):
+				self.assertEqual(draw_app.shop_exchange.__wrapped__(9001, 'zed')[1], 404) # standalone accounts are local, so call past the sign in check
+			activity.assert_not_called()
+		self.assertEqual(self.call('tok-zed', '/auth/me')[1]['user']['coins'], 100)
+		self.assertEqual(self.call('tok-zed', '/auth/me')[1]['exchange'], {'rate': 10, 'max': 150})
 
 	def test_feed_live_win(self):
 		'''Winning a live game with 3 or more players goes on the feed once, guests and smaller games never.'''

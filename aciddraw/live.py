@@ -11,7 +11,7 @@ import time
 
 import canvas
 import words
-from storage import DB_LOCK, add_capped_coins, arcade_event, arcade_push, db_connect, packs_of, stat
+from storage import DB_LOCK, add_capped_coins, arcade_activity, arcade_event, arcade_push, db_connect, packs_of, stat
 
 
 CHOOSE_TIME  = 15             # seconds the drawer gets to pick a word
@@ -298,6 +298,10 @@ class Room:
 						add_capped_coins(c, p['user_id'], self.word['tier'], 'live')
 					stat(c, p['user_id'], guessed=1)
 					arcade_push(c, p['user_id'])
+				if canvas.ink(self.ops) >= canvas.PAY_INK and drawer['user_id']: # only guesses between two accounts on a real drawing count for arcade missions
+					turn = f'live-{self.code}-{int(self.started * 1000)}'
+					arcade_activity(p['user_id'], 'guess', f'{turn}-{p["user_id"]}', p['ip'], {'live': True})
+					arcade_activity(drawer['user_id'], 'drawn', f'{turn}-{p["user_id"]}', drawer['ip'], {'live': True})
 			if all(q['guessed'] for k, q in self.players.items() if k != self.drawer):
 				self.end_turn()
 			return

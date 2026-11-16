@@ -87,6 +87,8 @@ acid-draw can optionally use [acid-arcade-db](../acid-arcade-db) for accounts, s
 
 With it set, signup, login and captchas go through acid-arcade-db, every request checks its session there, and the local `users` table becomes a mirror of the central account *(new mirrors get the starting coins)*. Renames and deletions are picked up once a minute. Coins earned, coins, best streak, drawings and games are pushed to the player's arcade profile after every paying guess and at the end of each live game. Pictures show next to account names, and the account menu links to the arcade account page for password, picture and deletion. Admins are the `DRAW_ADMINS` names plus arcade admins. If acid-arcade-db is down the game answers 503 instead of treating everyone as a guest.
 
+Arcade rewards: every correct guess between two accounts on a real drawing *(1v1 and live rooms)* is reported to acid-arcade-db as a `guess` for the guesser and a `drawn` for the drawer, which count toward the arcade's daily missions. The account menu gets a **Casino chips** tab to exchange coins for casino chips at 1 coin = $10, up to 150 coins a day. The coins are held while acid-arcade-db decides how much it pays *(the daily limit and the arcade's caps can cut it)*, only the whole coins it paid for are taken and the rest are given back. If the arcade can't be reached nothing is taken.
+
 | Variable            | Default                     | What it does                                                          |
 |---------------------|-----------------------------|-----------------------------------------------------------------------|
 | `ARCADE_URL`        |                             | Internal URL of acid-arcade-db *(e.g. `http://acid-arcade-db:20021`)* |
