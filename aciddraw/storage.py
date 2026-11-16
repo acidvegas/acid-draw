@@ -19,7 +19,7 @@ SIGNUP_EVERY  = 86400 # one new account per IP address in this many seconds
 LEADERBOARD_N = 25
 DRAWER_MIN    = 10    # drawings needed before showing up on the best drawer board
 BOARDS        = ('coins', 'streak', 'live', 'drawer')
-LIVE_DAY_CAP  = 150   # coins an account can earn from live rooms per UTC day
+DAY_CAP       = 150   # coins an account can earn per UTC day from each of live rooms and duels
 
 os.makedirs(DATA_DIR, exist_ok=True)
 
@@ -31,15 +31,18 @@ def add_coins(c: sqlite3.Connection, user_id: int, amount: int):
 		c.execute('UPDATE users SET coins = coins + ?, coins_earned = coins_earned + ? WHERE id=?', (amount, amount, user_id))
 
 
-def add_live_coins(c: sqlite3.Connection, user_id: int, amount: int):
-	'''Give a player coins from a live room, up to LIVE_DAY_CAP a day.'''
+def add_capped_coins(c: sqlite3.Connection, user_id: int, amount: int, kind: str):
+	'''Give a player coins from a live room or a duel, up to DAY_CAP a day for each.
+
+	:param kind: 'live' or 'duel'
+	'''
 
 	day  = time.strftime('%Y-%m-%d', time.gmtime())
-	row  = c.execute('SELECT coins FROM live_coins WHERE user_id=? AND day=?', (user_id, day)).fetchone()
-	give = min(amount, LIVE_DAY_CAP - (row[0] if row else 0))
+	row  = c.execute('SELECT coins FROM daily_coins WHERE user_id=? AND day=? AND kind=?', (user_id, day, kind)).fetchone()
+	give = min(amount, DAY_CAP - (row[0] if row else 0))
 	if user_id and give > 0:
 		add_coins(c, user_id, give)
-		c.execute('INSERT INTO live_coins(user_id, day, coins) VALUES(?, ?, ?) ON CONFLICT(user_id, day) DO UPDATE SET coins = coins + ?', (user_id, day, give, give))
+		c.execute('INSERT INTO daily_coins(user_id, day, kind, coins) VALUES(?, ?, ?, ?) ON CONFLICT(user_id, day, kind) DO UPDATE SET coins = coins + ?', (user_id, day, kind, give, give))
 
 
 def arcade_event(user_id: int, kind: str, text: str):
@@ -96,7 +99,7 @@ def delete_user(user_id: int):
 		c.execute('DELETE FROM games WHERE a=? OR b=?', (user_id, user_id))
 		c.execute('DELETE FROM plays WHERE user_id=?', (user_id,))
 		c.execute('DELETE FROM votes WHERE user_id=?', (user_id,))
-		c.execute('DELETE FROM live_coins WHERE user_id=?', (user_id,))
+		c.execute('DELETE FROM daily_coins WHERE user_id=?', (user_id,))
 		c.execute('DELETE FROM sessions WHERE user_id=?', (user_id,))
 		c.execute('UPDATE words SET submitted_by=NULL WHERE submitted_by=?', (user_id,))
 		c.execute('DELETE FROM users WHERE id=?', (user_id,))
@@ -204,11 +207,12 @@ def init_db():
 			at      INTEGER NOT NULL
 		)''')
 		c.execute('CREATE INDEX IF NOT EXISTS game_chat_game ON game_chat(game_id, id)')
-		c.execute('''CREATE TABLE IF NOT EXISTS live_coins (
+		c.execute('''CREATE TABLE IF NOT EXISTS daily_coins (
 			user_id INTEGER NOT NULL,
 			day     TEXT NOT NULL,
+			kind    TEXT NOT NULL,
 			coins   INTEGER NOT NULL,
-			PRIMARY KEY (user_id, day)
+			PRIMARY KEY (user_id, day, kind)
 		)''')
 
 

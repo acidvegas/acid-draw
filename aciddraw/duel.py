@@ -12,7 +12,7 @@ import time
 
 import canvas
 import words
-from storage import DB_LOCK, add_coins, arcade_event, arcade_push, db_connect, dumps, packs_of, spend, stat, username_of
+from storage import DB_LOCK, add_capped_coins, arcade_event, arcade_push, db_connect, dumps, packs_of, spend, stat, username_of
 
 
 EXPIRE_AFTER = 3 * 86400 # seconds without a move before a game ends and its streak is lost
@@ -27,6 +27,8 @@ BOMB_COST    = 25        # price to swap the three word choices for new ones
 MISSES_KEEP  = 20        # wrong guesses kept per drawing
 STREAK_FEED  = (5, 10, 25, 50) # streaks announced on the arcade activity feed
 CHAT_TIMES   = {}        # user id -> recent chat post times
+GUESS_EVERY  = 1.0       # seconds a player waits between guesses, so a script can not run through the word list
+GUESS_TIMES  = {}        # user id -> time of their last guess
 
 
 def bomb(user_id: int, game_id: int) -> str:
@@ -120,6 +122,8 @@ def draw(user_id: int, game_id: int, choice: int, ops: list) -> str:
 			return error
 		if not any(op['k'] in 'plrof' for op in ops):
 			return 'draw something first'
+		if canvas.ink(ops) < canvas.PAY_INK:
+			return 'draw a bit more first'
 		pick    = choices[choice]
 		other   = g['b'] if g['a'] == user_id else g['a']
 		now     = int(time.time())
@@ -158,6 +162,10 @@ def game_row(c: sqlite3.Connection, game_id: int, user_id: int) -> sqlite3.Row:
 def guess(user_id: int, game_id: int, text: str) -> dict:
 	'''Guess the word of the drawing waiting for this player. Returns {'correct': bool, ...} or {'error': ...}.'''
 
+	now = time.time()
+	if now - GUESS_TIMES.get(user_id, 0) < GUESS_EVERY:
+		return {'error': 'slow down'}
+	GUESS_TIMES[user_id] = now
 	with DB_LOCK, db_connect() as c:
 		g = game_row(c, game_id, user_id)
 		r = pending(c, game_id, user_id) if g and g['turn'] == user_id and g['status'] == 'active' else None
@@ -173,7 +181,7 @@ def guess(user_id: int, game_id: int, text: str) -> dict:
 		c.execute('UPDATE rounds SET result=\'guessed\', solved_at=?, attempts = attempts + 1 WHERE id=?', (now, r['id']))
 		c.execute('UPDATE games SET streak=?, best=MAX(best, ?), coins = coins + ?, updated_at=? WHERE id=?', (streak, streak, coins * 2, now, game_id))
 		for uid in (r['drawer'], user_id):
-			add_coins(c, uid, coins)
+			add_capped_coins(c, uid, coins, 'duel')
 			c.execute('UPDATE users SET best_streak=MAX(best_streak, ?) WHERE id=?', (streak, uid))
 		stat(c, r['drawer'], drawn=1, drawn_guessed=1)
 		stat(c, user_id, guessed=1)

@@ -11,7 +11,7 @@ import time
 
 import canvas
 import words
-from storage import DB_LOCK, add_live_coins, arcade_event, arcade_push, db_connect, packs_of, stat
+from storage import DB_LOCK, add_capped_coins, arcade_event, arcade_push, db_connect, packs_of, stat
 
 
 CHOOSE_TIME  = 15             # seconds the drawer gets to pick a word
@@ -31,7 +31,6 @@ GUESS_BASE   = 100            # points for any correct guess...
 GUESS_SPEED  = 400            # ...plus up to this much more the faster it comes
 DRAWER_EACH  = 50             # points the drawer gets for every player who guesses
 FEED_PLAYERS = 3              # players a live game needs before its winner goes on the arcade activity feed
-PAY_POINTS   = 30             # stroke points a drawing needs before a turn pays coins
 
 
 class Room:
@@ -126,8 +125,8 @@ class Room:
 		with DB_LOCK, db_connect() as c:
 			if drawer and drawer['user_id']:
 				stat(c, drawer['user_id'], drawn=1, drawn_guessed=1 if guessers else 0)
-				if self.points >= PAY_POINTS and any(p['user_id'] for p in guessers): # only signed in guessers on other accounts pay the drawer, and only for a real drawing
-					add_live_coins(c, drawer['user_id'], self.word['tier'])
+				if canvas.ink(self.ops) >= canvas.PAY_INK and any(p['user_id'] for p in guessers): # only signed in guessers on other accounts pay the drawer, and only for a real drawing
+					add_capped_coins(c, drawer['user_id'], self.word['tier'], 'live')
 				arcade_push(c, drawer['user_id'])
 			words.played(c, self.word['id'], [p['user_id'] for p in self.players.values()])
 
@@ -283,8 +282,8 @@ class Room:
 			self.add_msg(f'guessed the word! +{gain}', 'good', p['name'])
 			if p['user_id']:
 				with DB_LOCK, db_connect() as c:
-					if self.points >= PAY_POINTS and drawer['user_id']: # guests can not draw coins into an account, and neither can an empty canvas
-						add_live_coins(c, p['user_id'], self.word['tier'])
+					if canvas.ink(self.ops) >= canvas.PAY_INK and drawer['user_id']: # guests can not draw coins into an account, and neither can an empty canvas
+						add_capped_coins(c, p['user_id'], self.word['tier'], 'live')
 					stat(c, p['user_id'], guessed=1)
 					arcade_push(c, p['user_id'])
 			if all(q['guessed'] for k, q in self.players.items() if k != self.drawer):

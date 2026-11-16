@@ -9,6 +9,7 @@ OPS_MAX    = 4000                 # ops in one drawing
 POINTS_MAX = 80_000               # stroke points in one drawing
 STROKE_MAX = 3000                 # points in one stroke
 TIME_MAX   = 3_600_000            # ms, the latest an op may start
+PAY_INK    = 30                   # ink a drawing needs before a guess of it pays coins (see ink)
 BASE       = ['#111111', '#ffffff', '#8a8a8a', '#e53935', '#fb8c00', '#fdd835', '#43a047', '#1e88e5', '#8e24aa', '#6d4c41']
 PACKS      = {
 	'pastel' : ('Pastel',    100, ['#ffb3c7', '#ffd8a8', '#fff3a8', '#c3f0c8', '#b3e5fc', '#d7c4f2']),
@@ -28,6 +29,12 @@ def colors_for(packs: list) -> set:
 		if p in PACKS:
 			allowed.update(PACKS[p][2])
 	return allowed
+
+
+def ink(ops: list) -> int:
+	'''Measure how much was drawn: one per free stroke point and 10 per line, box or circle. Fills, undos and clears add nothing.'''
+
+	return sum(len(op['p']) // 3 if op['k'] == 'p' else 10 if op['k'] in 'lro' else 0 for op in ops)
 
 
 def validate(ops, colors: set, have_ops: int = 0, have_points: int = 0) -> tuple:

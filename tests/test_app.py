@@ -24,7 +24,10 @@ import storage
 import words
 
 
-STROKE = [{'k': 'p', 'c': '#111111', 's': 8, 't': 0, 'p': [10, 10, 0, 50, 50, 16, 90, 20, 16]}]
+STROKE = [{'k': 'p', 'c': '#111111', 's': 8, 't': 0, 'p': [v for i in range(40) for v in (10 + i, 10 + i, i)]}] # 40 points, enough ink to pay
+
+
+draw_app.duel.GUESS_EVERY = 0 # tests guess back to back; test_guess_rate turns it on
 
 
 class TestApp(unittest.TestCase):
@@ -172,14 +175,27 @@ class TestApp(unittest.TestCase):
 			room.say(other, room.word['word'])
 			return (coins('bob') - before[0], coins('carol') - before[1])
 
-		long_stroke = [{'k': 'p', 'c': '#111111', 's': 8, 't': 0, 'p': [v for i in range(40) for v in (i, i, i)]}]
-		self.assertEqual(turn('bob', 'carol', STROKE), (0, 0)) # a 3 point scribble pays nobody
+		long_stroke = STROKE
+		self.assertEqual(turn('bob', 'carol', [{'k': 'p', 'c': '#111111', 's': 8, 't': 0, 'p': [10, 10, 0, 50, 50, 16, 90, 20, 16]}]), (0, 0)) # a 3 point scribble pays nobody
 		self.assertEqual(turn('bob', 'guesty', long_stroke), (0, 0)) # a guest guessing pays nobody
 		self.assertTrue(all(turn('bob', 'carol', long_stroke))) # a real drawing between two accounts pays both
 		day = time.strftime('%Y-%m-%d', time.gmtime())
 		with storage.db_connect() as c:
-			c.execute('UPDATE live_coins SET coins=? WHERE day=?', (storage.LIVE_DAY_CAP, day))
+			c.execute('UPDATE daily_coins SET coins=? WHERE day=?', (storage.DAY_CAP, day))
 		self.assertEqual(turn('bob', 'carol', long_stroke), (0, 0)) # nothing past the daily cap
+
+
+	def test_guess_rate(self):
+		'''A duel guess right after another one is refused, and a tiny drawing can not be sent.'''
+
+		_, g = self.call('admin', '/games/new', {'mode': 'user', 'opponent': 'carol'})
+		self.call('admin', f'/games/{g["id"]}')
+		st, res = self.call('admin', f'/games/{g["id"]}/draw', {'choice': 0, 'ops': [{'k': 'p', 'c': '#111111', 's': 8, 't': 0, 'p': [10, 10, 0, 50, 50, 16]}]})
+		self.assertEqual(res.get('error'), 'draw a bit more first')
+		self.call('admin', f'/games/{g["id"]}/draw', {'choice': 0, 'ops': [{'k': 'l', 'c': '#111111', 's': 8, 't': 0, 'p': [0, 0, 99, 99]}] * 3}) # three lines are enough
+		with unittest.mock.patch.object(draw_app.duel, 'GUESS_EVERY', 1.0):
+			self.assertNotIn('error', self.call('carol', f'/games/{g["id"]}/guess', {'guess': 'qqqq'})[1])
+			self.assertEqual(self.call('carol', f'/games/{g["id"]}/guess', {'guess': 'qqqq'})[1].get('error'), 'slow down')
 
 
 	def test_seo(self):

@@ -23,7 +23,7 @@ import storage
 import words
 
 
-STROKE   = [{'k': 'p', 'c': '#111111', 's': 8, 't': 0, 'p': [10, 10, 0, 50, 50, 16, 90, 20, 16]}]
+STROKE   = [{'k': 'p', 'c': '#111111', 's': 8, 't': 0, 'p': [v for i in range(40) for v in (10 + i, 10 + i, i)]}] # 40 points, enough ink to pay
 SESSIONS = {
 	'tok-zed'  : {'user_id': 9001, 'username': 'zed',   'admin': False},
 	'tok-yan'  : {'user_id': 9002, 'username': 'yan',   'admin': False},
@@ -33,6 +33,9 @@ SESSIONS = {
 	'tok-ben'  : {'user_id': 9006, 'username': 'ben',   'admin': False}
 }
 ACCOUNTS = {s['username']: s['user_id'] for s in SESSIONS.values()} | {'quinn': 9020} # quinn has never visited acid-draw
+
+
+draw_app.duel.GUESS_EVERY = 0 # tests guess back to back
 
 
 class StopPoll(Exception):

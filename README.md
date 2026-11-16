@@ -7,7 +7,8 @@ Draw a word, someone else guesses it. Turn based 1v1 games and live rooms in the
 ### Turn based 1v1
 
 - Pick one of three words *(easy, medium or hard, worth 1, 2 or 3 coins)* and draw it. Your opponent watches a replay of every stroke, including the mistakes and the undos, and guesses the word from a bank of scrambled letter tiles
-- A correct guess pays the coins to both players and adds to the streak. Then the guesser draws one back
+- A correct guess pays the coins to both players *(up to 150 coins a day per account from games)* and adds to the streak. Then the guesser draws one back
+- A drawing needs a little ink *(a short stroke or a few shapes)* before it can be sent, and guesses are limited to one a second
 - Hints cost coins: reveal a letter *(10)*, remove the decoy tiles *(15)* or skip the drawing without losing the streak *(20)*. Giving up is free but the streak goes back to 0
 - Bombs *(25 coins)* swap the three word choices for new ones
 - Every wrong guess is kept. The drawer sees them as they come in and again when the round is over
@@ -23,7 +24,7 @@ Draw a word, someone else guesses it. Turn based 1v1 games and live rooms in the
 - Guesses one letter off are flagged as close *(only to the guesser)*. Players who already got the word chat among themselves so they can not give it away
 - Rooms are public *(listed)* or private *(code or link only)*. The host sets rounds, time to draw and room size, starts the game and can kick players
 - Guests can play with just a name. Names that belong to accounts are reserved
-- Right guesses pay coins *(1, 2 or 3 by word)* to the guesser and the drawer, but only between two accounts, only once something real is drawn, and only up to 150 coins a day per account
+- Right guesses pay coins *(1, 2 or 3 by word)* to the guesser and the drawer, but only between two accounts, only once something real is drawn, and only up to 150 coins a day per account from live rooms
 
 ### Drawing
 
