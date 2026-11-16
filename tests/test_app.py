@@ -124,6 +124,15 @@ class TestApp(unittest.TestCase):
 		_, cv = self.call('carol', f'/games/{r2["id"]}')
 		self.assertEqual(cv['step'], 'guess')
 
+	def test_join_guessing(self):
+		'''An IP that tries too many wrong room codes is told to wait, other IPs are not.'''
+
+		ip = {'REMOTE_ADDR': '10.8.0.1'}
+		for _ in range(draw_app.JOIN_FAIL_MAX):
+			self.assertEqual(self.client.post('/live/join', json={'code': 'ZZZZ', 'name': 'guesser'}, environ_base=ip).status_code, 404)
+		self.assertEqual(self.client.post('/live/join', json={'code': 'ZZZZ', 'name': 'guesser'}, environ_base=ip).status_code, 429)
+		self.assertEqual(self.client.post('/live/join', json={'code': 'ZZZZ', 'name': 'guesser'}, environ_base={'REMOTE_ADDR': '10.8.0.2'}).status_code, 404)
+
 	def test_ip_rooms(self):
 		'''One address can have 5 live rooms open, a 6th is refused while another address still gets one.'''
 

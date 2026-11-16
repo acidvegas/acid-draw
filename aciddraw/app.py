@@ -32,6 +32,8 @@ PUBLIC_URL    = os.environ.get('DRAW_PUBLIC_URL', '').rstrip('/') # main address
 PING_EVERY    = 15   # seconds between keep-alive comments on an idle event stream
 DB_EVERY      = 15   # seconds between refreshing database backed parts of an idle event stream
 IP_STREAMS    = 20   # event streams one IP address can have open at once
+JOIN_FAILS    = {}   # IP address -> times of recent joins with a wrong room code
+JOIN_FAIL_MAX = 10   # wrong room codes one IP address may try per minute, so private rooms can not be found by guessing
 
 if PROXIES:
 	app.wsgi_app = ProxyFix(app.wsgi_app, x_for=PROXIES, x_proto=PROXIES, x_host=PROXIES)
@@ -642,8 +644,15 @@ def live_join():
 	if error:
 		return api_error(error)
 	with hub.LOCK:
+		now   = time.time()
+		fails = [t for t in JOIN_FAILS.get(request.remote_addr, []) if t > now - 60]
+		if len(fails) >= JOIN_FAIL_MAX:
+			return api_error('too many wrong room codes, wait a minute', 429)
 		room = hub.ROOMS.get((data.get('code') or '').strip().upper())
 		if not room:
+			for ip in [ip for ip, times in JOIN_FAILS.items() if times[-1] <= now - 60]:
+				del JOIN_FAILS[ip]
+			JOIN_FAILS[request.remote_addr] = fails + [now]
 			return api_error('no room with that code', 404)
 		pid, error = room.join(user_id, name)
 		if error:
