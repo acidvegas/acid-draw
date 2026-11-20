@@ -1,6 +1,47 @@
-# acid-draw
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/logo-dark.png">
+    <img src=".github/logo-light.png" alt="acid-draw" width="460">
+  </picture>
+</h1>
 
-Draw a word, someone else guesses it. Turn based 1v1 games and live rooms in the browser, built with Flask.
+<p align="center"><b>Draw a word, someone else guesses it.</b></p>
+
+<p align="center">
+  <a href="https://draw.supernets.org"><img src="https://img.shields.io/badge/play-draw.supernets.org-ff4fa3?style=for-the-badge&labelColor=17121f" alt="Play now"></a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/python-3.12+-3776ab?logo=python&logoColor=white" alt="Python 3.12+">
+  <img src="https://img.shields.io/badge/flask-3.1-000000?logo=flask&logoColor=white" alt="Flask 3.1">
+  <img src="https://img.shields.io/badge/docker-ready-2496ed?logo=docker&logoColor=white" alt="Docker">
+  <img src="https://img.shields.io/badge/words-1%2C539-ffd23f?labelColor=17121f" alt="1,539 words">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-ISC-3fd5ff" alt="ISC License"></a>
+</p>
+
+<p align="center">
+  <img src=".github/screenshots/drawer.png" alt="Drawing in a live room" width="860">
+</p>
+
+Turn based 1v1 games and live rooms in the browser, built with Flask.
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%"><img src=".github/screenshots/guesser.png" alt="Guessing in a live room"></td>
+    <td width="50%"><img src=".github/screenshots/rooms.png" alt="Live room list"></td>
+  </tr>
+  <tr>
+    <td align="center"><i>Guessing, with the word shown as blanks</i></td>
+    <td align="center"><i>Join by code, create a room or pick a public one</i></td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src=".github/screenshots/mobile.png" alt="Playing on a phone" width="300"><br>
+  <i>Playing on a phone</i>
+</p>
 
 ## Features
 
